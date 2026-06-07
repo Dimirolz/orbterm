@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>terminal model experiment</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #171717;
+        color: #d4d4d4;
+        font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      #app {
+        height: 100%;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+      header {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 10px;
+        border-bottom: 1px solid #303030;
+        background: #202020;
+      }
+      #status { color: #8ab4f8; }
+      #screen {
+        position: relative;
+        overflow: hidden;
+        padding: 8px;
+        white-space: pre;
+        line-height: 1.35;
+      }
+      .cursor {
+        position: absolute;
+        width: 8px;
+        height: 17px;
+        background: #d4d4d4;
+        opacity: .65;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <strong>server model</strong>
+        <span id="status">connecting</span>
+      </header>
+      <main id="screen" tabindex="0"></main>
+    </div>
+
+    <script>
+      const screen = document.getElementById("screen");
+      const status = document.getElementById("status");
+      const content = document.createTextNode("");
+      const cursor = document.createElement("div");
+      cursor.className = "cursor";
+      screen.appendChild(content);
+      screen.appendChild(cursor);
+
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/model`);
+
+      ws.onopen = () => {
+        status.textContent = "connected";
+        screen.focus();
+      };
+      ws.onclose = () => status.textContent = "closed";
+      ws.onerror = () => status.textContent = "error";
+
+      ws.onmessage = (event) => {
+        const snap = JSON.parse(event.data);
+        const text = snap.lines.map((line) => line.map((c) => c.ch).join("")).join("\n");
+        content.nodeValue = text;
+
+        const rect = measureCell();
+        cursor.style.left = `${8 + snap.cursor.x * rect.width}px`;
+        cursor.style.top = `${8 + snap.cursor.y * rect.height}px`;
+        cursor.style.width = `${rect.width}px`;
+        cursor.style.height = `${rect.height}px`;
+      };
+
+      screen.addEventListener("keydown", (event) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        const data = keyData(event);
+        if (!data) return;
+        event.preventDefault();
+        ws.send(JSON.stringify({ type: "input", data }));
+      });
+
+      function keyData(event) {
+        if (event.key.length === 1) return event.key;
+        if (event.key === "Enter") return "\r";
+        if (event.key === "Backspace") return "\x7f";
+        if (event.key === "Tab") return "\t";
+        if (event.key === "ArrowUp") return "\x1b[A";
+        if (event.key === "ArrowDown") return "\x1b[B";
+        if (event.key === "ArrowRight") return "\x1b[C";
+        if (event.key === "ArrowLeft") return "\x1b[D";
+        if (event.key === "Escape") return "\x1b";
+        return "";
+      }
+
+      function measureCell() {
+        const span = document.createElement("span");
+        span.textContent = "M";
+        screen.appendChild(span);
+        const rect = span.getBoundingClientRect();
+        span.remove();
+        return { width: rect.width, height: rect.height };
+      }
+    </script>
+  </body>
+</html>

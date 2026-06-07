@@ -60,6 +60,17 @@
       #notice button {
         background: #0e639c; color: #fff; border: 0; border-radius: 4px; padding: 6px 14px; cursor: pointer;
       }
+      #dev {
+        position: fixed; right: 10px; bottom: 10px; z-index: 20;
+        min-width: 190px; padding: 8px 10px;
+        background: rgba(24, 24, 24, .92); border: 1px solid #3a3a3a; border-radius: 6px;
+        color: #cfcfcf; font-size: 11px; line-height: 1.45;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+      }
+      #dev .title { color: #fff; font-weight: 700; margin-bottom: 4px; }
+      #dev .rowm { display: flex; justify-content: space-between; gap: 14px; }
+      #dev .key { color: #8a8a8a; }
+      #dev .warn { color: #f0b84f; }
       .hidden { display: none !important; }
     </style>
   </head>
@@ -74,6 +85,7 @@
         <div id="empty">select an agent</div>
         <div id="notice" class="hidden"></div>
       </main>
+      <div id="dev"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
@@ -85,10 +97,22 @@
       const emptyEl = document.getElementById("empty");
       const noticeEl = document.getElementById("notice");
       const newBtn = document.getElementById("new");
+      const devEl = document.getElementById("dev");
 
       let agents = [];
       let selected = null;
-      const terminals = new Map(); // n -> { term, fit, ws, el }
+      const terminals = new Map(); // n -> { term, fit, ws, el, metrics }
+
+      const dev = {
+        totalBytes: 0,
+        windowBytes: 0,
+        bytesPerSec: 0,
+        pendingWrites: 0,
+        maxPendingWrites: 0,
+        lastWriteMs: 0,
+        maxWriteMs: 0,
+        lastMessageAt: 0,
+      };
 
       // ---- REST ----
       const api = {
@@ -189,7 +213,21 @@
         const proto = location.protocol === "https:" ? "wss" : "ws";
         const ws = new WebSocket(`${proto}://${location.host}/term?machine=shilo-agent-${n}`);
         ws.binaryType = "arraybuffer";
-        ws.onmessage = (ev) => term.write(typeof ev.data === "string" ? ev.data : new Uint8Array(ev.data));
+        ws.onmessage = (ev) => {
+          const data = typeof ev.data === "string" ? ev.data : new Uint8Array(ev.data);
+          const bytes = typeof data === "string" ? new TextEncoder().encode(data).length : data.byteLength;
+          const started = performance.now();
+          dev.totalBytes += bytes;
+          dev.windowBytes += bytes;
+          dev.pendingWrites += 1;
+          dev.maxPendingWrites = Math.max(dev.maxPendingWrites, dev.pendingWrites);
+          dev.lastMessageAt = Date.now();
+          term.write(data, () => {
+            dev.pendingWrites -= 1;
+            dev.lastWriteMs = performance.now() - started;
+            dev.maxWriteMs = Math.max(dev.maxWriteMs, dev.lastWriteMs);
+          });
+        };
         ws.onopen = () => sendResize(e);
         term.onData((d) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "input", data: d })); });
 
@@ -259,6 +297,41 @@
 
       refresh();
       setInterval(refresh, 4000); // keep VM states fresh
+      setInterval(updateDevOverlay, 1000);
+      updateDevOverlay();
+
+      function updateDevOverlay() {
+        dev.bytesPerSec = dev.windowBytes;
+        dev.windowBytes = 0;
+        const mem = performance.memory
+          ? `${mb(performance.memory.usedJSHeapSize)} / ${mb(performance.memory.jsHeapSizeLimit)} MB`
+          : "n/a";
+        const staleMs = dev.lastMessageAt ? Date.now() - dev.lastMessageAt : 0;
+        const lagClass = dev.pendingWrites > 5 || dev.lastWriteMs > 50 ? "warn" : "";
+        devEl.innerHTML =
+          `<div class="title">dev metrics</div>` +
+          metric("open terms", terminals.size) +
+          metric("bytes/sec", fmtBytes(dev.bytesPerSec)) +
+          metric("total bytes", fmtBytes(dev.totalBytes)) +
+          metric("write lag", `<span class="${lagClass}">${dev.lastWriteMs.toFixed(1)} ms</span>`) +
+          metric("pending writes", `${dev.pendingWrites} / max ${dev.maxPendingWrites}`) +
+          metric("browser mem", mem) +
+          metric("last output", dev.lastMessageAt ? `${staleMs} ms ago` : "none");
+      }
+
+      function metric(k, v) {
+        return `<div class="rowm"><span class="key">${k}</span><span>${v}</span></div>`;
+      }
+
+      function fmtBytes(n) {
+        if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+        if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${n} B`;
+      }
+
+      function mb(n) {
+        return (n / 1024 / 1024).toFixed(0);
+      }
     </script>
   </body>
 </html>
