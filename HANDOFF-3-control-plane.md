@@ -9,12 +9,13 @@ Move from `exp0` shell tooling toward a real control plane:
 ```text
 Effect TS backend  -> owns agent lifecycle
 React TS frontend  -> operator UI
-oa CLI             -> optional thin shim / fallback, not the main interface
+oa CLI             -> discarded after exp0; not carried forward
 ```
 
-Key decision: do **not** rewrite `oa` as the main product. `oa` proved the
-workflow and commands, but the next stage should be a service because the
-future consumer is the backend/control plane, not a human CLI.
+Key decision: do **not** rewrite `oa` or keep it as a shim. `oa` proved the
+workflow and commands, but after the experiment it is no longer needed. The
+next stage should be a service because the future consumer is the
+backend/control plane, not a human CLI.
 
 ## Target shape
 
@@ -62,17 +63,18 @@ React frontend:
   `MachineNotFound`, `InvalidAgentNumber`, `CommandFailed`, `UserAborted`.
 - Interactive operations (`shell`, `codex`) stay separate from normal RPC
   workflows because they need stdio/session passthrough.
-- Keep `oa` temporarily as a small API client or emergency local fallback.
+- Drop `oa` entirely once its proven behavior has been ported into the
+  backend services.
 
 ## Suggested sequence
 
 1. Define the `Agent` model and persisted state.
-2. Build Effect backend wrapping the existing `oa` behavior.
+2. Build Effect backend by porting the proven `oa` behavior.
 3. Add minimal HTTP API for list/create/delete/start/stop.
 4. Add job runner + log streaming for provisioning.
 5. Build React dashboard on top.
 6. Add Hasura lifecycle from `HANDOFF-2-hasura.md`.
-7. Reduce `oa` to a thin client once the service is stable.
+7. Delete/archive `oa` after the service covers the exp0 workflows.
 
 ## Open questions
 
