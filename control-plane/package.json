@@ -1,0 +1,12 @@
+{
+  "name": "orb-control-plane",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev"
+  },
+  "dependencies": {
+    "@xterm/xterm": "^6.0.0"
+  }
+}
