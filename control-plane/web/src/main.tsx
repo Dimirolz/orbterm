@@ -1,10 +1,7 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// no StrictMode: it double-mounts CodexTerminal in dev, opening two
+// websockets per selection and replaying the buffer twice
+createRoot(document.getElementById('root')!).render(<App />)

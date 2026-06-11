@@ -39,15 +39,24 @@ export function CodexTerminal({ machine }: { machine: string }) {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'input', data }))
     })
 
+    // fit() resizes xterm's DOM, which re-fires the ResizeObserver; without a
+    // guard this loops forever on container heights where rows flip N <-> N+1
+    // (page visibly "jumps"). Only refit when the proposed grid actually differs.
+    let raf = 0
     const ro = new ResizeObserver(() => {
-      if (el.offsetWidth > 0) {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        if (el.offsetWidth === 0) return
+        const dims = fit.proposeDimensions()
+        if (!dims || (dims.cols === term.cols && dims.rows === term.rows)) return
         fit.fit()
         sendResize()
-      }
+      })
     })
     ro.observe(el)
 
     return () => {
+      cancelAnimationFrame(raf)
       ro.disconnect()
       input.dispose()
       ws.close()
