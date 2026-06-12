@@ -27,6 +27,7 @@ export default function App() {
   }, [refresh])
 
   const run = async (key: string, fn: () => Promise<unknown>) => {
+    if (busy === key) return
     setBusy(key)
     setError(null)
     try {
@@ -50,7 +51,7 @@ export default function App() {
           </span>
           <button
             className="primary"
-            disabled={busy !== null}
+            disabled={busy === 'new'}
             onClick={() => run('new', api.create)}
           >
             {busy === 'new' ? 'cloning…' : '+ new'}
@@ -106,7 +107,7 @@ export default function App() {
             </div>
             <button
               className="primary"
-              disabled={busy !== null}
+              disabled={busy === `start-${sel.n}`}
               onClick={() => run(`start-${sel.n}`, () => api.start(sel.n))}
             >
               {busy === `start-${sel.n}` ? 'starting…' : 'start VM'}
@@ -156,6 +157,7 @@ function AgentRow({
     onAction(action)
   }
   const pending = (action: string) => busy === `${action}-${a.n}`
+  const rowBusy = busy?.endsWith(`-${a.n}`) ?? false
   const up = stackUp(a.stack)
   const partial = stackPartial(a.stack)
 
@@ -181,25 +183,25 @@ function AgentRow({
       </div>
       <div className="acts">
         {running ? (
-          <button disabled={busy !== null} onClick={act('stop')}>
+          <button disabled={rowBusy} onClick={act('stop')}>
             {pending('stop') ? '…' : 'stop'}
           </button>
         ) : (
-          <button disabled={busy !== null} onClick={act('start')}>
+          <button disabled={rowBusy} onClick={act('start')}>
             {pending('start') ? '…' : 'start'}
           </button>
         )}
         {running && !up && (
-          <button disabled={busy !== null} onClick={act('stack-up')}>
+          <button disabled={rowBusy} onClick={act('stack-up')}>
             {pending('stack-up') ? '…' : 'fix stack'}
           </button>
         )}
         {running && (
-          <button disabled={busy !== null} onClick={act('doctor')}>
+          <button disabled={rowBusy} onClick={act('doctor')}>
             {pending('doctor') ? '…' : 'doctor'}
           </button>
         )}
-        <button className="danger" disabled={busy !== null} onClick={act('delete')}>
+        <button className="danger" disabled={rowBusy} onClick={act('delete')}>
           {pending('delete') ? '…' : 'rm'}
         </button>
       </div>
