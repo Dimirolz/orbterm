@@ -1,7 +1,6 @@
 # Decision: перенести docker compose внутрь агентской VM
 
-Дата: 2026-06-12. Статус: **принято, НЕ реализовано** (текущая схема из
-HANDOFF-6 продолжает работать, пока новая не пройдёт e2e).
+Дата: 2026-06-12. Статус: **реализуется радикальным упрощением**.
 
 ## Контекст
 
@@ -67,9 +66,14 @@ Remote 660 MB idle — шум). Hasura 512m + pg + redis платим per-agent 
   (hasura без secret = anonymous schema), кэш-ключ в свой redis,
   `grep neon` по .env агента = пусто.
 
-## Миграция
+## Текущее направление реализации
 
-- Hasura.ts/envFor НЕ выбрасывать сразу — они рабочие и проверенные;
-  удалять только после того, как новая схема пройдёт e2e.
-- temporal :7233 может остаться shared на хосте (или
-  TEMPORAL_WORKER_ENABLED=false как сейчас).
+- host-managed `Hasura.ts` удалён;
+- lifecycle control-plane теперь управляет VM и запускает `docker compose`
+  внутри неё;
+- compose services задаются через `ORB_HASURA_SERVICES`
+  (default: `postgres graphql-engine`) и
+  `ORB_BACKEND_DEP_SERVICES` (default: `redis-queue redis-cache temporal`);
+- Temporal запускаем по дефолту, потому backend web держит к нему соединение;
+  `temporalio/admin-tools` не нужен, CLI есть в `temporalio/temporal`;
+- `doctor` проверяет docker/compose/pg/redis/hasura/backend/env safety внутри VM.
