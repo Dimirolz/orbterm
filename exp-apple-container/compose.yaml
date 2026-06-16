@@ -1,0 +1,16 @@
+services:
+  pg:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: pg
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+  hasura:
+    image: hasura/graphql-engine:v2.40.0
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:pg@pg:5432/postgres
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+    ports: ["8080:8080"]
+    depends_on: [pg]

@@ -5,6 +5,11 @@ import './App.css'
 
 type AgentAction = 'start' | 'stop' | 'stack-up' | 'doctor' | 'delete'
 
+const REPO_DIR = '/home/dmitrijilin/projects/shilo-ai-mono'
+
+const vscodeSshUrl = (machine: string) =>
+  `vscode://vscode-remote/ssh-remote+${encodeURIComponent(`${machine}@orb`)}${REPO_DIR}`
+
 export default function App() {
   const [agents, setAgents] = useState<AgentInfo[]>([])
   const [selected, setSelected] = useState<number | null>(null)
@@ -21,7 +26,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    refresh()
+    void Promise.resolve().then(refresh)
     const t = setInterval(refresh, 2000)
     return () => clearInterval(t)
   }, [refresh])
@@ -156,6 +161,10 @@ function AgentRow({
     e.stopPropagation()
     onAction(action)
   }
+  const openCode = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    window.location.href = vscodeSshUrl(a.name)
+  }
   const pending = (action: string) => busy === `${action}-${a.n}`
   const rowBusy = busy?.endsWith(`-${a.n}`) ?? false
   const up = stackUp(a.stack)
@@ -194,6 +203,11 @@ function AgentRow({
         {running && !up && (
           <button disabled={rowBusy} onClick={act('stack-up')}>
             {pending('stack-up') ? '…' : 'fix stack'}
+          </button>
+        )}
+        {running && (
+          <button onClick={openCode} title={`Open ${a.name} in VS Code Remote-SSH`}>
+            code
           </button>
         )}
         {running && (
