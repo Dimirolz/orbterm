@@ -33,10 +33,10 @@ web/src/App.tsx        DONE — React UI: sidebar (state dot, codex badge
                        new/start/stop/doctor/rm, doctor output в overlay <pre>,
                        error toast (не alert), main pane = CodexTerminal для
                        running агента / notice+start для stopped
-web/src/App.css        DONE — тёмная тема с янтарным "orb" акцентом
+web/src/App.css        DONE — тёмная тема с янтарным акцентом
 web/src/index.css      DONE — reset + overflow:hidden (см. фикс ниже)
 web/src/main.tsx       DONE — StrictMode убран (двойной ws connect в dev)
-web/index.html         title "orb — codex agents"
+web/index.html         title "keen.fleet — codex agents"
 DELETE /api/agents/:n  exercised, работает (kill pty -> stop -> delete)
 ```
 

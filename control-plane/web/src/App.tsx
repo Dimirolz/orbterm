@@ -54,7 +54,9 @@ export default function App() {
       <aside id="side">
         <header>
           <span className="brand">
-            <span className="orb" /> orb
+            <span className="wordmark">
+              keen<span className="dot" />fleet
+            </span>
           </span>
           <button
             className="primary"
