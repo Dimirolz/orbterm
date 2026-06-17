@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>keen.fleet — control plane для паралельних агентів</title>
+    <style>
+      :root {
+        --bg: #08080b;
+        --text: #f6f6f4;
+        --muted: #9c9ca6;
+        --dim: #65656f;
+        --amber: #ffb347;
+        --amber-deep: #e8963a;
+        --green: #5fd083;
+        --hair: rgba(255, 255, 255, 0.08);
+        --hair-strong: rgba(255, 255, 255, 0.14);
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      /* subtle grain */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0.035;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+
+      /* wordmark */
+      .wordmark {
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+      }
+      .wordmark .dot {
+        display: inline-block;
+        width: 0.58em;
+        height: 0.58em;
+        margin: 0 0.12em;
+        border-radius: 50%;
+        background: radial-gradient(circle at 32% 30%, #ffe1ad, #ff9d2e 55%, #8a4d12);
+        box-shadow: 0 0 14px rgba(255, 160, 60, 0.7);
+      }
+
+      /* nav */
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(14px) saturate(140%);
+        background: rgba(8, 8, 11, 0.6);
+        border-bottom: 1px solid var(--hair);
+      }
+      nav .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+      }
+      nav .wordmark { font-size: 20px; }
+      nav .tag {
+        color: var(--dim);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      /* glow helpers */
+      .aurora {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(90px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* hero */
+      header.hero {
+        position: relative;
+        text-align: center;
+        padding: 150px 0 160px;
+        overflow: hidden;
+      }
+      header.hero .bg {
+        position: absolute;
+        inset: 0;
+        background: url("img/hero.jpg") center/cover no-repeat;
+        opacity: 0.6;
+        mask-image: radial-gradient(120% 90% at 50% 35%, #000 35%, transparent 78%);
+        -webkit-mask-image: radial-gradient(120% 90% at 50% 35%, #000 35%, transparent 78%);
+      }
+      header.hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(8,8,11,0.55) 0%, rgba(8,8,11,0) 30%, rgba(8,8,11,0.95) 100%);
+      }
+      header.hero .wrap { position: relative; z-index: 2; }
+      header.hero .wordmark { font-size: clamp(54px, 11vw, 116px); }
+      header.hero .sub {
+        margin: 26px auto 0;
+        max-width: 640px;
+        font-size: clamp(17px, 2.2vw, 22px);
+        color: #d8d8de;
+        text-shadow: 0 2px 30px rgba(0,0,0,0.7);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 30px;
+        padding: 7px 16px;
+        border: 1px solid var(--hair-strong);
+        border-radius: 999px;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--amber);
+        background: rgba(255, 179, 71, 0.07);
+        backdrop-filter: blur(6px);
+      }
+      .cta {
+        margin-top: 40px;
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .btn {
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 13px 24px;
+        border-radius: 12px;
+        border: 1px solid var(--hair-strong);
+        color: var(--text);
+        background: rgba(255,255,255,0.03);
+        backdrop-filter: blur(6px);
+        transition: transform 0.18s ease, border-color 0.18s, background 0.18s, box-shadow 0.18s;
+      }
+      .btn:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.06); }
+      .btn.primary {
+        border: none;
+        color: #2a1804;
+        background: linear-gradient(180deg, #ffc56b, #f0992f);
+        box-shadow: 0 8px 30px rgba(255, 160, 60, 0.3);
+      }
+      .btn.primary:hover { box-shadow: 0 12px 40px rgba(255, 160, 60, 0.45); transform: translateY(-2px); }
+
+      /* sections */
+      section { position: relative; padding: 92px 0; z-index: 1; }
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 14px;
+      }
+      section h2 {
+        font-size: clamp(28px, 4.5vw, 44px);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        margin-bottom: 16px;
+        background: linear-gradient(180deg, #fff, #b9b9c2);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      section h2 .accent {
+        background: linear-gradient(180deg, #ffd28a, #ff9d2e);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      section .lead { color: var(--muted); max-width: 640px; font-size: 17px; }
+
+      /* gradient hairline card */
+      .glass {
+        position: relative;
+        border-radius: 20px;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)),
+          rgba(16,16,20,0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid transparent;
+        background-clip: padding-box;
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+      }
+      .glass::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.02));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+      }
+      .glass:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,179,71,0.12);
+      }
+
+      /* bento */
+      .bento {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 18px;
+        margin-top: 44px;
+      }
+      .bento .cell { padding: 28px; }
+      .cell.span1 { grid-column: span 1; }
+      .cell.span2 { grid-column: span 2; }
+      .cell.span3 { grid-column: span 3; }
+      .cell.span4 { grid-column: span 4; }
+      .cell.span6 { grid-column: span 6; }
+      .cell .ico {
+        width: 44px; height: 44px;
+        display: grid; place-items: center;
+        border-radius: 12px;
+        font-size: 20px;
+        margin-bottom: 16px;
+        background: radial-gradient(circle at 30% 25%, rgba(255,179,71,0.25), rgba(255,179,71,0.05));
+        border: 1px solid rgba(255,179,71,0.18);
+      }
+      .cell h3 { font-size: 18px; margin-bottom: 6px; letter-spacing: -0.01em; }
+      .cell p { color: var(--muted); font-size: 14.5px; }
+      .cell.feature-wide {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 240px;
+        overflow: hidden;
+      }
+      .cell.feature-wide .bgimg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background: url("img/divider.jpg") center right / cover no-repeat;
+      }
+      .cell.feature-wide .bgimg::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, rgba(14,14,18,0.97) 28%, rgba(14,14,18,0.55) 62%, rgba(14,14,18,0.15) 100%);
+      }
+      .cell.feature-wide .txt { position: relative; z-index: 2; max-width: 62%; }
+      .glass.feature-wide::before { z-index: 3; }
+      @media (max-width: 860px) {
+        .bento { grid-template-columns: repeat(2, 1fr); }
+        .cell.span3, .cell.span2, .cell.span6 { grid-column: span 2; }
+        .cell.feature-wide .txt { max-width: 100%; }
+        .cell.feature-wide .bgimg::after { background: linear-gradient(90deg, rgba(14,14,18,0.95) 45%, rgba(14,14,18,0.3)); }
+      }
+
+      /* flow split */
+      .split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; margin-top: 44px; }
+      .figure { position: relative; border-radius: 20px; overflow: hidden; }
+      .figure img { display: block; width: 100%; height: auto; }
+      .figure::after { content:""; position:absolute; inset:0; border-radius:inherit; box-shadow: inset 0 0 0 1px var(--hair-strong); }
+      @media (max-width: 860px) { .split { grid-template-columns: 1fr; gap: 28px; } }
+
+      /* timeline */
+      .timeline { display: grid; gap: 0; }
+      .tl {
+        position: relative;
+        padding: 0 0 30px 46px;
+        border-left: 1px solid var(--hair-strong);
+      }
+      .tl:last-child { border-left-color: transparent; padding-bottom: 0; }
+      .tl .node {
+        position: absolute;
+        left: -16px; top: 0;
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        display: grid; place-items: center;
+        font-weight: 800; font-size: 13px;
+        color: #2a1804;
+        background: radial-gradient(circle at 32% 30%, #ffe1ad, #ff9d2e 60%, #8a4d12);
+        box-shadow: 0 0 16px rgba(255,160,60,0.5);
+      }
+      .tl h3 { font-size: 16px; margin-bottom: 3px; }
+      .tl p { color: var(--muted); font-size: 14.5px; }
+
+      /* stats */
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 44px; }
+      .stat { padding: 28px 20px; text-align: center; border-radius: 18px; }
+      .stat .big {
+        font-size: 38px; font-weight: 800; letter-spacing: -0.02em;
+        background: linear-gradient(180deg, #ffd28a, #ff9d2e);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .stat .lbl { color: var(--muted); font-size: 13px; margin-top: 6px; }
+      @media (max-width: 680px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+      code.k { color: var(--amber); background: rgba(255,179,71,0.1); padding: 1px 7px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 0.88em; }
+
+      /* CTA band */
+      .band {
+        position: relative;
+        margin: 0 auto;
+        text-align: center;
+        padding: 80px 28px;
+        overflow: hidden;
+      }
+      .band .glow-c { width: 600px; height: 320px; background: rgba(255,160,60,0.16); left: 50%; top: 30%; transform: translateX(-50%); }
+      .band h2 { margin-bottom: 22px; }
+
+      footer { border-top: 1px solid var(--hair); padding: 44px 0 70px; color: var(--dim); font-size: 13px; text-align: center; }
+      footer .wordmark { font-size: 18px; margin-bottom: 12px; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <div class="wrap">
+        <span class="wordmark">keen<span class="dot"></span>fleet</span>
+        <span class="tag">mission control для агентів</span>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="bg"></div>
+      <div class="wrap">
+        <span class="pill">control plane · parallel coding agents</span>
+        <div><span class="wordmark">keen<span class="dot"></span>fleet</span></div>
+        <p class="sub">
+          Флот кодинг-агентів, кожен у своїй ізольованій капсулі.
+          Запускай, спостерігай і порівнюй десятки паралельних запусків
+          з одного командного центру.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="#how">Як це працює</a>
+          <a class="btn" href="#why">Навіщо</a>
+        </div>
+      </div>
+    </header>
+
+    <section id="why">
+      <div class="aurora" style="width:520px;height:300px;background:rgba(255,160,60,0.10);left:-120px;top:40px;"></div>
+      <div class="wrap">
+        <div class="eyebrow">навіщо</div>
+        <h2>Один розробник — <span class="accent">цілий екіпаж</span></h2>
+        <p class="lead">
+          Замість одного агента, який гальмує на кожній задачі, — флот.
+          Кожен член екіпажу працює над своєю задачею чи гілкою, у повністю
+          ізольованому середовищі, не заважаючи іншим.
+        </p>
+
+        <div class="bento">
+          <div class="glass cell span3">
+            <div class="ico">🛰️</div>
+            <h3>Паралелізм</h3>
+            <p>Багато агентів працюють одночасно, кожен над своєю задачею. Не чекаєш — роздаєш.</p>
+          </div>
+          <div class="glass cell span3">
+            <div class="ico">🧪</div>
+            <h3>Ізоляція</h3>
+            <p>Кожен агент в окремій легкій VM з копією репо та повним dev-стеком. Не чіпають файли хоста й одне одного.</p>
+          </div>
+          <div class="glass cell span2">
+            <div class="ico">⚡</div>
+            <h3>Швидкість</h3>
+            <p>Базова VM клонується copy-on-write майже миттєво.</p>
+          </div>
+          <div class="glass cell feature-wide span4">
+            <div class="bgimg"></div>
+            <div class="txt">
+              <div class="ico">🎛️</div>
+              <h3>Оркестрація з одного екрану</h3>
+              <p>Список агентів, живі термінали, diff-в'ювер, кнопки start / stop / порівняти — усе в одній панелі.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="aurora" style="width:560px;height:320px;background:rgba(95,208,131,0.08);right:-160px;top:60px;"></div>
+      <div class="wrap">
+        <div class="eyebrow">архітектура</div>
+        <h2>Капсули на <span class="accent">орбіті</span> навколо ядра</h2>
+        <div class="split">
+          <div>
+            <p class="lead" style="margin-bottom:28px;">
+              Веб-панель керує control-plane сервером, який оркеструє легкі
+              віртуалки через OrbStack. Кожна VM — самодостатня капсула з
+              агентом і його оточенням.
+            </p>
+            <div class="bento" style="grid-template-columns:1fr 1fr; margin-top:0;">
+              <div class="glass cell span1" style="padding:20px;"><h3>Web-панель</h3><p>React · термінали, diff</p></div>
+              <div class="glass cell span1" style="padding:20px;"><h3>Control plane</h3><p>Effect-TS · orbctl</p></div>
+              <div class="glass cell span1" style="padding:20px;"><h3>OrbStack VM</h3><p>repo + Codex + стек</p></div>
+              <div class="glass cell span1" style="padding:20px;"><h3>Golden base</h3><p>запікається раз · CoW</p></div>
+            </div>
+          </div>
+          <div class="figure">
+            <img src="img/fleet_orbit.jpg" alt="Флот капсул на орбіті навколо ядра" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="flow">
+      <div class="wrap">
+        <div class="eyebrow">процес</div>
+        <h2>Від кліку до <span class="accent">результату</span></h2>
+        <div class="split">
+          <div class="figure">
+            <img src="img/mission_control.jpg" alt="Командний центр керування агентами" loading="lazy" />
+          </div>
+          <div class="timeline">
+            <div class="tl">
+              <div class="node">1</div>
+              <h3>Тисни «+ new»</h3>
+              <p>Панель клонує золоту базову VM — з усіма залежностями, образами та прогрітим кешем збірки.</p>
+            </div>
+            <div class="tl">
+              <div class="node">2</div>
+              <h3>Агент стартує в капсулі</h3>
+              <p>Усередині VM піднімається dev-стек (<code class="k">docker compose up</code>) і запускається Codex над копією репо.</p>
+            </div>
+            <div class="tl">
+              <div class="node">3</div>
+              <h3>Спостерігай із ЦУПу</h3>
+              <p>Живий термінал, статус стеку, прогрес — усе видно в панелі. Відкрий VS Code Remote одним кліком.</p>
+            </div>
+            <div class="tl">
+              <div class="node">4</div>
+              <h3>Порівнюй і забирай</h3>
+              <p>Дивись <code class="k">diff</code> кожного агента, залишай найкращий результат, решту гаси.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="numbers">
+      <div class="wrap">
+        <div class="eyebrow">економіка</div>
+        <h2>Новий агент коштує <span class="accent">майже нічого</span></h2>
+        <p class="lead">
+          Базова VM запікається один раз. Клони шарять диск через
+          copy-on-write — тому масштабувати флот дешево.
+        </p>
+        <div class="stats">
+          <div class="glass stat"><div class="big">~0.1с</div><div class="lbl">клон нової VM</div></div>
+          <div class="glass stat"><div class="big">~250 MiB</div><div class="lbl">VM + агент idle</div></div>
+          <div class="glass stat"><div class="big">∞</div><div class="lbl">агентів паралельно*</div></div>
+          <div class="glass stat"><div class="big">0</div><div class="lbl">конфліктів між ними</div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="band">
+      <div class="aurora glow-c"></div>
+      <div class="wrap" style="position:relative;z-index:1;">
+        <h2>Підніми свій флот</h2>
+        <div class="cta">
+          <a class="btn primary" href="#">Запустити панель</a>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="wrap">
+        <div class="wordmark">keen<span class="dot"></span>fleet</div>
+        <div>control plane для паралельних кодинг-агентів · by KeenEthics</div>
+        <div style="margin-top:6px; opacity:0.7">* у межах ресурсів твоєї машини 🙂</div>
+      </div>
+    </footer>
+  </body>
+</html>
