@@ -1,4 +1,5 @@
 import { Data, Effect } from "effect"
+import { createHash } from "node:crypto"
 import * as Codex from "./Codex.js"
 import { BASE_MACHINE, MACHINE_RE, machineFor } from "./config.js"
 import { Machines } from "./Machines.js"
@@ -19,6 +20,8 @@ export interface AgentInfo {
 
 const NO_STACK: StackStatus = { pg: false, redis: false, hasura: false }
 
+const versionFor = (value: string) => createHash("sha256").update(value).digest("hex")
+
 const diffCommand = `
 {
   git diff --no-ext-diff --find-renames HEAD --
@@ -26,6 +29,26 @@ const diffCommand = `
     git diff --no-ext-diff --no-index -- /dev/null "$file"
     code=$?
     test "$code" -eq 0 -o "$code" -eq 1
+  done
+}
+`
+
+const diffStatusCommand = `
+{
+  git diff --name-status -z HEAD --
+  git ls-files --others --exclude-standard -z | while IFS= read -r -d '' file; do
+    printf '??\\0%s\\0' "$file"
+  done
+  {
+    git diff --name-only -z HEAD --
+    git ls-files --others --exclude-standard -z
+  } | sort -zu | while IFS= read -r -d '' file; do
+    if test -f "$file"; then
+      printf 'blob\\0%s\\0' "$file"
+      git hash-object -- "$file"
+    else
+      printf 'gone\\0%s\\0\\n' "$file"
+    fi
   done
 }
 `
@@ -122,6 +145,12 @@ export class Agents extends Effect.Service<Agents>()("Agents", {
       diff: (n: number) =>
         requireAgent(n).pipe(
           Effect.zipRight(machines.runInRepo(machineFor(n), diffCommand)),
+        ),
+
+      diffStatus: (n: number) =>
+        requireAgent(n).pipe(
+          Effect.zipRight(machines.runInRepo(machineFor(n), diffStatusCommand)),
+          Effect.map((status) => ({ dirty: status.length > 0, version: versionFor(status) })),
         ),
     }
   }),

@@ -13,6 +13,11 @@ export interface AgentInfo {
   stack: StackStatus
 }
 
+export interface DiffStatus {
+  dirty: boolean
+  version: string
+}
+
 export const stackUp = (s: StackStatus) => s.pg && s.redis && s.hasura
 export const stackPartial = (s: StackStatus) => (s.pg || s.redis || s.hasura) && !stackUp(s)
 
@@ -32,4 +37,5 @@ export const api = {
   stopCodex: (n: number) => request<unknown>(`/api/agents/${n}/codex/stop`, { method: 'POST' }),
   stackUp: (n: number) => request<unknown>(`/api/agents/${n}/stack/up`, { method: 'POST' }),
   diff: (n: number) => request<{ diff: string }>(`/api/agents/${n}/diff`),
+  diffStatus: (n: number) => request<DiffStatus>(`/api/agents/${n}/diff/status`),
 }

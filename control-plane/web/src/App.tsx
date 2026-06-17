@@ -1,9 +1,11 @@
+import { useQuery } from '@tanstack/react-query'
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { api, stackPartial, stackUp, type AgentInfo } from './api'
 import { CodexTerminal } from './CodexTerminal'
 import './App.css'
 
 type AgentAction = 'start' | 'stop' | 'stack-up' | 'diff' | 'delete'
+type OpenDiff = { n: number; name: string; patch: string; version: string }
 
 const REPO_DIR = '/home/dmitrijilin/projects/shilo-ai-mono'
 
@@ -16,7 +18,7 @@ export default function App() {
   const [agents, setAgents] = useState<AgentInfo[]>([])
   const [selected, setSelected] = useState<number | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [diff, setDiff] = useState<{ name: string; patch: string } | null>(null)
+  const [diff, setDiff] = useState<OpenDiff | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
@@ -32,6 +34,36 @@ export default function App() {
     const t = setInterval(refresh, 2000)
     return () => clearInterval(t)
   }, [refresh])
+
+  const diffStatus = useQuery({
+    queryKey: ['diff-status', diff?.n],
+    queryFn: () => api.diffStatus(diff!.n),
+    enabled: diff !== null,
+    refetchInterval: 2000,
+  })
+
+  useEffect(() => {
+    if (diff === null || diffStatus.data === undefined || diffStatus.data.version === diff.version) return
+
+    let cancelled = false
+    api
+      .diff(diff.n)
+      .then(({ diff: patch }) => {
+        if (cancelled) return
+        setDiff((current) =>
+          current?.n === diff.n
+            ? { ...current, patch, version: diffStatus.data.version }
+            : current,
+        )
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [diff, diffStatus.data])
 
   const run = async (key: string, fn: () => Promise<unknown>) => {
     if (busy === key) return
@@ -82,8 +114,9 @@ export default function App() {
                 if (action === 'stack-up') run(key, () => api.stackUp(a.n))
                 if (action === 'diff')
                   run(key, async () => {
+                    const status = await api.diffStatus(a.n)
                     const { diff: patch } = await api.diff(a.n)
-                    setDiff({ name: a.name, patch })
+                    setDiff({ n: a.n, name: a.name, patch, version: status.version })
                   })
                 if (action === 'delete' && confirm(`delete agent ${a.n} (VM ${a.name})?`))
                   run(key, async () => {
@@ -134,7 +167,7 @@ export default function App() {
               <button onClick={() => setDiff(null)}>×</button>
             </header>
             <Suspense fallback={<div className="empty-diff">loading diff…</div>}>
-              <DiffViewer patch={diff.patch} />
+              <DiffViewer key={diff.version} patch={diff.patch} />
             </Suspense>
           </div>
         </div>

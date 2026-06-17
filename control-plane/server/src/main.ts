@@ -88,6 +88,13 @@ const router = HttpRouter.empty.pipe(
     }),
   ),
   HttpRouter.get(
+    "/api/agents/:n/diff/status",
+    Effect.gen(function* () {
+      const agents = yield* Agents
+      return yield* ok(yield* agents.diffStatus(yield* agentNumber))
+    }),
+  ),
+  HttpRouter.get(
     "/api/agents/:n/diff",
     Effect.gen(function* () {
       const agents = yield* Agents
