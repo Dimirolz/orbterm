@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { api, stackPartial, stackUp, type AgentInfo } from './api'
 import { CodexTerminal } from './CodexTerminal'
 import './App.css'
@@ -15,30 +15,25 @@ const vscodeSshUrl = (machine: string) =>
 const DiffViewer = lazy(() => import('./DiffViewer').then((m) => ({ default: m.DiffViewer })))
 
 export default function App() {
-  const [agents, setAgents] = useState<AgentInfo[]>([])
   const [selected, setSelected] = useState<number | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [diff, setDiff] = useState<OpenDiff | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
-    try {
-      setAgents(await api.list())
-    } catch (e) {
-      console.warn(e)
-    }
-  }, [])
-
-  useEffect(() => {
-    void Promise.resolve().then(refresh)
-    const t = setInterval(refresh, 2000)
-    return () => clearInterval(t)
-  }, [refresh])
+  const agentsQuery = useQuery({
+    queryKey: ['agents'],
+    queryFn: api.list,
+    initialData: [] satisfies AgentInfo[],
+    notifyOnChangeProps: ['data'],
+    refetchInterval: 2000,
+  })
+  const agents = agentsQuery.data
 
   const diffStatus = useQuery({
     queryKey: ['diff-status', diff?.n],
     queryFn: () => api.diffStatus(diff!.n),
     enabled: diff !== null,
+    notifyOnChangeProps: ['data'],
     refetchInterval: 2000,
   })
 
@@ -75,7 +70,7 @@ export default function App() {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(null)
-      await refresh()
+      await agentsQuery.refetch()
     }
   }
 
