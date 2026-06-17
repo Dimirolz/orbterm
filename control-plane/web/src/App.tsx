@@ -13,6 +13,7 @@ const vscodeSshUrl = (machine: string) =>
   `vscode://vscode-remote/ssh-remote+${encodeURIComponent(`${machine}@orb`)}${REPO_DIR}`
 
 const DiffViewer = lazy(() => import('./DiffViewer').then((m) => ({ default: m.DiffViewer })))
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export default function App() {
   const [selected, setSelected] = useState<number | null>(null)
@@ -69,8 +70,27 @@ export default function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
-      setBusy(null)
       await agentsQuery.refetch()
+      setBusy(null)
+    }
+  }
+
+  const createAgent = async () => {
+    if (busy === 'new') return
+    setBusy('new')
+    setError(null)
+    try {
+      const created = await api.create()
+      setSelected(created.n)
+      for (let i = 0; i < 10; i++) {
+        const result = await agentsQuery.refetch()
+        if (result.data?.some((a) => a.n === created.n)) return
+        await sleep(500)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(null)
     }
   }
 
@@ -88,7 +108,7 @@ export default function App() {
           <button
             className="primary"
             disabled={busy === 'new'}
-            onClick={() => run('new', api.create)}
+            onClick={createAgent}
           >
             {busy === 'new' ? 'cloning…' : '+ new'}
           </button>
