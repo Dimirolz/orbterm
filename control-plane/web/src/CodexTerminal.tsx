@@ -35,8 +35,18 @@ export function CodexTerminal({ machine }: { machine: string }) {
       if (typeof ev.data === 'string') return // status frames; list polling covers it
       term.write(new Uint8Array(ev.data as ArrayBuffer))
     }
-    const input = term.onData((data) => {
+    const sendInput = (data: string) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'input', data }))
+    }
+    term.attachCustomKeyEventHandler((ev) => {
+      if (ev.type === 'keydown' && ev.key === 'Enter' && ev.shiftKey) {
+        sendInput('\x1b[13;2:1u\x1b[13;2:3u')
+        return false
+      }
+      return true
+    })
+    const input = term.onData((data) => {
+      sendInput(data)
     })
 
     // fit() resizes xterm's DOM, which re-fires the ResizeObserver; without a
