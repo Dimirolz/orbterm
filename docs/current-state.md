@@ -112,6 +112,12 @@ message `hello\nworld`, and repeated `Shift+Enter` must never submit.
 
 Goal: paste an image in the web terminal and have Codex attach it.
 
+Prerequisites in every agent/base VM:
+
+```sh
+sudo apt-get install -y xvfb xclip
+```
+
 The `@` picker path was rejected:
 - `@<uuid>.png` produced "no matches" because the file was in a subdir.
 - `@.keenterm-paste/<uuid>.png` hung on "loading" because the dir was hidden and
