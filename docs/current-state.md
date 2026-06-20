@@ -73,7 +73,7 @@ Dev ports:
 
 - Do not attach a separate `ws` server to the Effect HTTP server; use `HttpServerRequest.upgrade`.
 - `CodexTerminal` has a ResizeObserver guard around `fit.proposeDimensions()`; removing it can trigger an xterm resize loop.
-- `Shift+Enter` in the web terminal is still special-cased with `\x1b[13;2:1u\x1b[13;2:3u`; verify before touching.
+- `Shift+Enter` in the web terminal is special-cased for Codex/crossterm; verify behavior before touching.
 - The project is still hardcoded for Shilo in `control-plane/server/src/config.ts`.
 - `REPO_DIR` defaults to `~/projects/shilo-ai-mono` inside the VM.
 
@@ -84,4 +84,3 @@ Dev ports:
 3. Add base VM refresh/update flow.
 4. Add quick links: backend app, Hasura, VS Code.
 5. Add memory visibility and cleanup controls.
-
