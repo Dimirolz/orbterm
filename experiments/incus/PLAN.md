@@ -262,7 +262,7 @@ apple/container (бесплатный, Apache 2.0) + кастомное ядро
 
 ---
 
-# HANDOFF для следующего агента (2026-06-19)
+# Notes for the next pass (2026-06-19)
 
 PoC доказан end-to-end (см. «Прогон 3»): apple/container + кастомное ядро с
 btrfs + Incus = OrbStack-эквивалент с mutable golden и CoW clone. Storage
@@ -364,7 +364,7 @@ container machine run -n fleet-main sudo incus copy base agent-1   # CoW, ~0.1s
 5. **Реальный shilo golden refresh + clone**: создать agent-base из репо
    shilo (git clone + deps + pg golden), мутировать на месте (pull/migrate),
    `incus copy` агента, поднять compose-in-vm внутри клона, прогнать e2e
-   чеклист из handoff 06.
+   чеклист из `docs/current-state.md`.
 6. **Сеть / VS Code polish** (после macOS 26): host → fleet-main → agent
    порты; SSH для VS Code Remote; DNS-имена агентов.
 

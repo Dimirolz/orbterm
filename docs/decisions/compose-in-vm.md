@@ -53,8 +53,8 @@ Remote 660 MB idle — шум). Hasura 512m + pg + redis платим per-agent 
 ## Что теряем
 
 1. **Golden refresh через хостовый reflink** (секунды). В новой модели
-   свежие pg-данные = перезапечь base VM. Операция нечастая, и п.4 плана
-   handoff 06 всё равно ещё не сделан — приемлемо.
+   свежие pg-данные = перезапечь base VM. Операция нечастая, поэтому
+   приемлемо.
 2. Хостовый `docker ps` как единая точка статуса — заменяется на
    `orb -m ... docker ps` per agent.
 
@@ -62,7 +62,7 @@ Remote 660 MB idle — шум). Hasura 512m + pg + redis платим per-agent 
 
 - docker engine внутри OrbStack-машины: поддерживается по докам OrbStack,
   но прогнать compose из репы в клоне base живьём + замерить idle dockerd;
-- e2e чеклист из handoff 06 переиспользовать как есть: auth round-trip
+- e2e чеклист из `docs/current-state.md` переиспользовать как есть: auth round-trip
   (hasura без secret = anonymous schema), кэш-ключ в свой redis,
   `grep neon` по .env агента = пусто.
 

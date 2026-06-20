@@ -6,6 +6,8 @@ Local agent fleet control plane and experiments.
 
 ```text
 control-plane/   Effect TS backend + React operator UI
-docs/            handoffs, decisions, research notes, briefs
+docs/            current state, decisions, product direction, research notes
 experiments/     isolated spikes and prototypes
 ```
+
+Start with `docs/current-state.md`.
