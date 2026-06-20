@@ -38,9 +38,14 @@ export function CodexTerminal({ machine }: { machine: string }) {
     const sendInput = (data: string) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'input', data }))
     }
+    // Codex (crossterm) reads Shift+Enter as a CSI-u key event, not a control
+    // char. Browsers collapse Shift+Enter to a bare CR, which Codex treats as
+    // "submit". Synthesize the CSI-u press so crossterm decodes Enter+SHIFT and
+    // inserts a newline instead. Only the press form is needed; Codex ignores
+    // key releases.
     term.attachCustomKeyEventHandler((ev) => {
-      if (ev.type === 'keydown' && ev.key === 'Enter' && ev.shiftKey) {
-        sendInput('\x1b[13;2:1u\x1b[13;2:3u')
+      if (ev.key === 'Enter' && ev.shiftKey && !ev.altKey && !ev.ctrlKey && !ev.metaKey) {
+        if (ev.type === 'keydown') sendInput('\x1b[13;2u')
         return false
       }
       return true

@@ -24,8 +24,41 @@ interface Session {
   buffer: string
   clients: Set<TermClient>
   carry: string
+  probeCarry: string
   working: boolean
   title: string
+}
+
+// Codex probes for kitty keyboard protocol support by writing `CSI ? u`. xterm.js
+// answers DSR/DA queries but not this one, so Codex concludes enhanced keys are
+// unsupported and never enables the mode that distinguishes Shift+Enter from a
+// bare Enter. Answer it ourselves (flags = 0: "protocol understood, none active")
+// so Codex enables enhanced keys and accepts our CSI-u Shift+Enter sequence.
+const KITTY_QUERY = "\x1b[?u"
+const KITTY_QUERY_REPLY = "\x1b[?0u"
+
+function answerKeyboardProbe(s: Session, data: string) {
+  const combined = s.probeCarry + data
+  let from = 0
+  for (;;) {
+    const idx = combined.indexOf(KITTY_QUERY, from)
+    if (idx === -1) break
+    s.term.write(KITTY_QUERY_REPLY)
+    from = idx + KITTY_QUERY.length
+  }
+  s.probeCarry = combined.slice(-(KITTY_QUERY.length - 1)) // keep tail for split seqs
+}
+
+// On reconnect the whole output buffer is replayed; without this, xterm.js would
+// re-answer the original startup probes (cursor position, colors, device attrs)
+// and inject stale responses into a Codex that finished probing long ago, which
+// corrupts its input/cursor state. These are invisible queries, safe to drop.
+function stripTerminalQueries(data: string): string {
+  return data
+    .replace(/\x1b\[6n/g, "") // cursor position report
+    .replace(/\x1b\]1[01];\?(?:\x07|\x1b\\)/g, "") // OSC 10/11 color queries
+    .replace(/\x1b\[\?u/g, "") // kitty keyboard query
+    .replace(/\x1b\[c/g, "") // primary device attributes
 }
 
 const sessions = new Map<string, Session>()
@@ -66,9 +99,10 @@ function getSession(machine: string): Session {
     env: { ...process.env, TERM: "xterm-256color" } as Record<string, string>,
   })
 
-  const session: Session = { term, buffer: "", clients: new Set(), carry: "", working: false, title: "" }
+  const session: Session = { term, buffer: "", clients: new Set(), carry: "", probeCarry: "", working: false, title: "" }
 
   term.onData((data) => {
+    answerKeyboardProbe(session, data)
     session.buffer += data
     if (session.buffer.length > BUFFER_CAP) session.buffer = session.buffer.slice(-BUFFER_CAP)
     detectStatus(session, data)
@@ -107,7 +141,8 @@ export function attach(machine: string, client: TermClient) {
   s.clients.add(client)
   console.log(`[term] ${machine} connected (${s.clients.size} client(s))`)
 
-  if (s.buffer) client.send(Buffer.from(s.buffer, "utf8"))
+  const replay = stripTerminalQueries(s.buffer)
+  if (replay) client.send(Buffer.from(replay, "utf8"))
   client.send(JSON.stringify({ type: "status", working: s.working, title: s.title }))
 
   return {

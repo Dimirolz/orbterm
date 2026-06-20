@@ -73,9 +73,40 @@ Dev ports:
 
 - Do not attach a separate `ws` server to the Effect HTTP server; use `HttpServerRequest.upgrade`.
 - `CodexTerminal` has a ResizeObserver guard around `fit.proposeDimensions()`; removing it can trigger an xterm resize loop.
-- `Shift+Enter` in the web terminal is special-cased for Codex/crossterm; verify behavior before touching.
+- `Shift+Enter` in the web terminal is special-cased for Codex/crossterm (see below); verify behavior before touching.
 - The project is still hardcoded for Shilo in `control-plane/server/src/config.ts`.
 - `REPO_DIR` defaults to `~/projects/shilo-ai-mono` inside the VM.
+
+## Shift+Enter in the Web Terminal
+
+Codex is a crossterm TUI: it only distinguishes `Shift+Enter` (insert newline)
+from `Enter` (submit) when the terminal supports the **kitty keyboard protocol**.
+The browser collapses `Shift+Enter` to a bare CR, which Codex reads as submit, so
+it required a three-layer fix — a one-line client tweak alone was not enough:
+
+1. **Client** (`web/src/CodexTerminal.tsx`): on `Shift+Enter` keydown (no other
+   modifiers) send the CSI-u press `\x1b[13;2u` and swallow the event, so
+   crossterm decodes `Enter+SHIFT` instead of a CR.
+2. **Server probe answer** (`server/src/Codex.ts`): Codex probes support with
+   `CSI ? u`; xterm.js answers DSR/DA queries but never that one, so Codex
+   concludes enhanced keys are unsupported and disables the mode entirely. The
+   server scans live PTY output and replies `\x1b[?0u` ("protocol understood,
+   no flags active") so Codex enables enhanced keys.
+3. **Replay sanitation** (`server/src/Codex.ts`): on reconnect the whole output
+   buffer is replayed; without stripping, xterm.js re-answers the original
+   startup probes (`CSI 6n`, OSC 10/11 color, `CSI ?u`, `CSI c`) into a live
+   Codex and corrupts its cursor state. `stripTerminalQueries` removes these
+   invisible queries from the replay.
+
+```text
+client  Shift+Enter ───▶ \x1b[13;2u ──▶ server ──▶ pty ──▶ Codex (Enter+SHIFT)
+server  Codex CSI ?u probe ──▶ reply \x1b[?0u (enables enhanced keys)
+server  reconnect replay ──▶ strip CSI 6n / OSC 10,11 / CSI ?u / CSI c
+```
+
+Verify: restart the server (recreates the PTY), then in a running agent's
+terminal type `hello` → `Shift+Enter` → `world`; plain `Enter` should submit one
+message `hello\nworld`, and repeated `Shift+Enter` must never submit.
 
 ## Next Work
 
