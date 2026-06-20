@@ -1,7 +1,7 @@
 // Persistent per-machine Codex pty sessions.
 //
 // Deliberately imperative: interactive stdio passthrough is a separate concern
-// from the RPC lifecycle (HANDOFF-3). Sessions survive websocket disconnects;
+// from the RPC lifecycle. Sessions survive websocket disconnects;
 // output is buffered and replayed on reconnect.
 
 import pty from "node-pty"

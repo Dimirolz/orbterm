@@ -1,7 +1,7 @@
 # Orb Agent Handoff 5 — Control Plane MVP (in progress)
 
-Continues from `HANDOFF-3-control-plane.md` (direction) and
-`HANDOFF-4-vertical-slice.md` (validated shell steps). Experiments are DONE;
+Continues from `docs/handoffs/03-control-plane.md` (direction) and
+`docs/handoffs/04-vertical-slice.md` (validated shell steps). Experiments are DONE;
 this is the build phase: **Effect TS backend + React UI**, replacing `oa`.
 
 ## Decisions locked in this session
@@ -108,7 +108,7 @@ log:       /tmp/orb-cp.log
 2. Verify in browser: pnpm dev:server + pnpm dev:web, create/select agent,
    codex terminal interactive, scrollback survives tab switch (server replay).
 3. Exercise DELETE /api/agents/:n once; leave one fresh agent for play.
-4. Then (later iterations, from HANDOFF-4): HasuraService per-agent
+4. Then (later iterations, from handoff 04): HasuraService per-agent
    pg/redis/hasura up/down (reflink golden, ports pg :154NN hasura :180NN
    redis :163NN), golden refresh job, JobService with log streaming for
    long provisioning ops.

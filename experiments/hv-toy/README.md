@@ -1,4 +1,4 @@
-# exp-hv-toy
+# hv-toy
 
 Tiny `Hypervisor.framework` experiment.
 
@@ -20,7 +20,7 @@ no guest kernel, no initramfs. Just memory, registers, execution, and exits.
 ## Run
 
 ```sh
-make -C exp-hv-toy run
+make -C experiments/hv-toy run
 ```
 
 Expected shape:

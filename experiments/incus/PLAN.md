@@ -278,7 +278,7 @@ btrfs + Incus = OrbStack-эквивалент с mutable golden и CoW clone. St
   правкой `kernel/config-arm64` (есть `.bak`). Артефакт ядра:
   `~/projects/containerization/kernel/vmlinux` (arm64 Image, 30MB).
 - Outer-образ `local/incus-machine` (ubuntu 24.04 + systemd + incus 6.0 +
-  btrfs-progs) собран из `exp-incus/Dockerfile`.
+  btrfs-progs) собран из `experiments/incus/Dockerfile`.
 
 ## Как воспроизвести с нуля (reference)
 
@@ -293,7 +293,7 @@ container system kernel set --arch arm64 --binary "$PWD/vmlinux" --force
 
 # 2. outer образ + машина
 cd ~/projects/orb
-container build -t local/incus-machine -f exp-incus/Dockerfile exp-incus
+container build -t local/incus-machine -f experiments/incus/Dockerfile experiments/incus
 container machine create local/incus-machine --name fleet-main \
   --cpus 4 --memory 8G --home-mount none
 
@@ -345,12 +345,12 @@ container machine run -n fleet-main sudo incus copy base agent-1   # CoW, ~0.1s
 ## Следующие шаги (план codex)
 
 1. **[готово частично] Зафиксировать kernel build** — команды выше; можно
-   вынести в `exp-incus/build-kernel.sh` (обернуть клон+sed+make+set).
+   вынести в `experiments/incus/build-kernel.sh` (обернуть клон+sed+make+set).
 2. **First-boot init fleet-main**: запечь в `local/incus-machine` systemd
    unit, который при первом старте делает `incus admin init` + создаёт
    btrfs-пул + bridge (idempotent). Чтобы `machine create` давал готовый
-   fleet-main без ручных шагов. Файлы: `exp-incus/Dockerfile` +
-   `exp-incus/firstboot-incus.sh`.
+   fleet-main без ручных шагов. Файлы: `experiments/incus/Dockerfile` +
+   `experiments/incus/firstboot-incus.sh`.
 3. **MachinesIncus.ts** рядом с
    `control-plane/server/src/Machines.ts`: тот же интерфейс (`list/clone/
    start/stop/delete/runInRepo`), бэкенд через `container machine run …
@@ -364,7 +364,7 @@ container machine run -n fleet-main sudo incus copy base agent-1   # CoW, ~0.1s
 5. **Реальный shilo golden refresh + clone**: создать agent-base из репо
    shilo (git clone + deps + pg golden), мутировать на месте (pull/migrate),
    `incus copy` агента, поднять compose-in-vm внутри клона, прогнать e2e
-   чеклист из HANDOFF-6.
+   чеклист из handoff 06.
 6. **Сеть / VS Code polish** (после macOS 26): host → fleet-main → agent
    порты; SSH для VS Code Remote; DNS-имена агентов.
 
@@ -396,7 +396,7 @@ Storage решён, но **память — теперь главный реал
 памяти — ОДИН high-water mark на всех, с жёстким потолком от `--memory`.
 Чище, чем apple/container-per-agent (там у каждого свой high-water).
 Сравнение с OrbStack не катастрофично: OrbStack тоже держит тёплый VM и
-отдаёт лениво/не до нуля (дрейф 3151→2474→2210 в EXPERIMENT-apple-container).
+отдаёт лениво/не до нуля (дрейф 3151→2474→2210 в `docs/research/apple-container.md`).
 Разница: OrbStack медленно дрейфует вниз, apple/container стоит на
 high-water до рестарта.
 
@@ -405,7 +405,7 @@ high-water до рестарта.
 1. **Жёсткий потолок**: `container machine create --memory 6G` (не дефолт
    «половина хоста» = 12G на 24GB). Footprint физически не превысит лимит.
 2. **Per-agent cgroup**: `incus config set agent-N limits.memory 2GiB`.
-3. Лимиты docker/pg/hasura внутри агента (уже в DECISION-compose-in-vm).
+3. Лимиты docker/pg/hasura внутри агента (уже в `docs/decisions/compose-in-vm.md`).
 4. **Periodic restart fleet-main** при раздувании — единственный честный
    reset.
 

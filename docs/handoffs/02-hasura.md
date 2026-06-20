@@ -1,6 +1,6 @@
 # Orb Agent Handoff 2 — Shared-Host Hasura (Plan B, validated)
 
-Continues from `HANDOFF.md` (Experiment 1 = clean base VM, repo + baked
+Continues from `docs/handoffs/01-base.md` (Experiment 1 = clean base VM, repo + baked
 `pnpm install`, fast clone verified).
 
 ## Decision (locked in, experimentally verified)

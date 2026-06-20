@@ -1,8 +1,8 @@
 # Orb Agent Handoff 6 — путь к day-to-day использованию
 
-Continues from `HANDOFF-5-control-plane-mvp.md` (control plane MVP) and
-`HANDOFF-4-vertical-slice.md` (validated shell steps for the hasura stack).
-HANDOFF-5's web UI work is **DONE**; this file is the plan for what remains
+Continues from `docs/handoffs/05-control-plane-mvp.md` (control plane MVP) and
+`docs/handoffs/04-vertical-slice.md` (validated shell steps for the hasura stack).
+Handoff 05's web UI work is **DONE**; this file is the plan for what remains
 before the control plane is usable for daily work.
 
 ## Что сделано в сессии 2026-06-12 (пункты 1+2 плана — DONE)
@@ -25,7 +25,7 @@ web                    stack-бейдж в строке агента (tooltip pg
 
 Детали и результаты проверок — в пунктах 1 и 2 плана ниже (помечены DONE).
 
-## Что сделано в этой сессии (поверх HANDOFF-5)
+## Что сделано в этой сессии (поверх handoff 05)
 
 ```text
 web/src/App.tsx        DONE — React UI: sidebar (state dot, codex badge

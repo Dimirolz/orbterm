@@ -1,6 +1,6 @@
 # Orb Agent Handoff 3 — Effect Control Plane
 
-Continues from `HANDOFF.md` and `HANDOFF-2-hasura.md`.
+Continues from `docs/handoffs/01-base.md` and `docs/handoffs/02-hasura.md`.
 
 ## Direction
 
@@ -73,7 +73,7 @@ React frontend:
 3. Add minimal HTTP API for list/create/delete/start/stop.
 4. Add job runner + log streaming for provisioning.
 5. Build React dashboard on top.
-6. Add Hasura lifecycle from `HANDOFF-2-hasura.md`.
+6. Add Hasura lifecycle from `docs/handoffs/02-hasura.md`.
 7. Delete/archive `oa` after the service covers the proven workflows.
 
 ## Open questions
