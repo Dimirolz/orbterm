@@ -108,6 +108,48 @@ Verify: restart the server (recreates the PTY), then in a running agent's
 terminal type `hello` → `Shift+Enter` → `world`; plain `Enter` should submit one
 message `hello\nworld`, and repeated `Shift+Enter` must never submit.
 
+## Image Paste — Research (not yet implemented)
+
+Goal: paste/drop an image in the web terminal and have Codex attach it.
+
+Key finding: **Codex does NOT detect images from prompt text.** Bracketed-pasting
+a path like `/tmp/foo.png` is treated as plain text. Attachment is a structured
+UI action (`UserInput::LocalImage` + `[Image #N]` placeholder), triggered only by:
+
+1. The `@` file-search popup: type `@<path>`, the popup surfaces the match, and
+   accepting it (Tab/Enter) makes Codex run `image_dimensions()` and attach.
+   Search is rooted at cwd (`REPO_DIR`), so the file must live under the repo,
+   not `/tmp`.
+2. `Ctrl+V` / `Alt+V` from the *system clipboard of the machine Codex runs on*
+   (inside the VM) — not reachable from the browser.
+3. Structured `UserInput::LocalImage` via Codex's app-server API — a different
+   channel than the TUI/PTY, larger rework.
+
+Supported formats (sniffed by bytes, not extension): PNG, JPEG, GIF, WebP.
+
+Only viable PTY path today is option 1:
+
+```text
+browser paste blob ─▶ POST /api/agents/:n/upload ─▶ file in REPO_DIR/.keenterm-paste/x.png (in VM)
+                                                 ─▶ pty: "@.keenterm-paste/x.png" + Tab/Enter
+                                                                  └─▶ Codex popup attaches [Image #N]
+```
+
+Risks to resolve next session:
+- Timing/race: must wait for the `@` popup to populate before sending Tab/Enter,
+  with no TUI feedback over the PTY. Likely needs a small delay or retry.
+- Confirm the `@` popup accepts repo-relative (and/or absolute) paths.
+- Cleanup of uploaded temp files in the VM.
+- Ignore the upload dir from git WITHOUT touching the project's committed
+  `.gitignore`: add `.keenterm-paste/` to `.git/info/exclude` in the VM checkout
+  (local, uncommitted). Do it once in the base VM so clones inherit it; otherwise
+  the uploaded images pollute `git status` / agent diffs.
+- Server upload endpoint: multipart/raw body, MIME allow-list (image/*), size cap;
+  push into VM via `orb -m <machine>` (see `Machines.runInRepo` pattern).
+
+Client hooks: DOM `paste`/`drop` listeners on the xterm container (read
+`clipboardData.files` / `dataTransfer.files`), not `attachCustomKeyEventHandler`.
+
 ## Next Work
 
 1. Externalize project config instead of hardcoding Shilo values.
