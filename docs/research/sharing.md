@@ -11,7 +11,6 @@
   сессии Codex, отдаёт diff. См. `control-plane/server/src/`.
 - **web-панель** (React 19 + Vite, xterm.js) — список агентов, терминалы,
   diff-вьювер, кнопки start/stop. См. `control-plane/web/src/`.
-- отдельный статический `landing/index.html`.
 
 Главное препятствие для шеринга — **не упаковка, а захардкоженность под Shilo**.
 Всё проектно-специфичное сидит в `control-plane/server/src/config.ts`:
