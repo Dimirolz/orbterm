@@ -136,7 +136,7 @@ export default function App() {
                 if (action === 'delete' && confirm(`delete agent ${a.n} (VM ${a.name})?`))
                   run(key, async () => {
                     await api.remove(a.n)
-                    if (selected === a.n) setSelected(null)
+                    setSelected((cur) => (cur === a.n ? null : cur))
                   })
               }}
             />
