@@ -91,7 +91,16 @@ function getSession(machine: string): Session {
   let s = sessions.get(machine)
   if (s) return s
 
-  const inner = `. ~/.asdf/asdf.sh && cd ${REPO_DIR} && exec codex --yolo`
+  const inner = [
+    ". ~/.asdf/asdf.sh",
+    "if command -v Xvfb >/dev/null; then",
+    "  export DISPLAY=:77",
+    "  pgrep -f 'Xvfb :77' >/dev/null || (Xvfb :77 -screen 0 1024x768x24 >/tmp/keenterm-xvfb.log 2>&1 &)",
+    "  sleep 0.2",
+    "fi",
+    `cd ${REPO_DIR}`,
+    "exec codex --yolo",
+  ].join("\n")
   const term = pty.spawn("orb", ["-m", machine, "bash", "-lc", inner], {
     name: "xterm-256color",
     cols: 120,

@@ -19,9 +19,9 @@ export class Sh extends Effect.Service<Sh>()("Sh", {
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor
 
-    const run = (cmd: string, ...args: Array<string>) =>
+    const runCommand = (label: string, command: Command.Command) =>
       Effect.gen(function* () {
-        const process = yield* executor.start(Command.make(cmd, ...args))
+        const process = yield* executor.start(command)
         const collect = (stream: typeof process.stdout) =>
           stream.pipe(Stream.decodeText(), Stream.runFold("", (a, b) => a + b))
         const [exitCode, stdout, stderr] = yield* Effect.all(
@@ -30,7 +30,7 @@ export class Sh extends Effect.Service<Sh>()("Sh", {
         )
         if (exitCode !== 0) {
           return yield* new CommandFailed({
-            command: [cmd, ...args].join(" "),
+            command: label,
             exitCode,
             stderr: stderr.trim(),
             stdout: stdout.trim(),
@@ -43,6 +43,13 @@ export class Sh extends Effect.Service<Sh>()("Sh", {
         Effect.catchAll((e) => (e._tag === "CommandFailed" ? Effect.fail(e) : Effect.die(e))),
       )
 
-    return { run }
+    const run = (cmd: string, ...args: Array<string>) =>
+      runCommand([cmd, ...args].join(" "), Command.make(cmd, ...args))
+
+    /** Like `run`, but feeds `input` to the command's stdin (UTF-8). */
+    const runWithInput = (input: string, cmd: string, ...args: Array<string>) =>
+      runCommand([cmd, ...args].join(" "), Command.make(cmd, ...args).pipe(Command.feed(input)))
+
+    return { run, runWithInput }
   }),
 }) {}

@@ -108,9 +108,31 @@ Verify: restart the server (recreates the PTY), then in a running agent's
 terminal type `hello` → `Shift+Enter` → `world`; plain `Enter` should submit one
 message `hello\nworld`, and repeated `Shift+Enter` must never submit.
 
-## Image Paste — Research (not yet implemented)
+## Image Paste — Clipboard Bridge PoC
 
-Goal: paste/drop an image in the web terminal and have Codex attach it.
+Goal: paste an image in the web terminal and have Codex attach it.
+
+The `@` picker path was rejected:
+- `@<uuid>.png` produced "no matches" because the file was in a subdir.
+- `@.keenterm-paste/<uuid>.png` hung on "loading" because the dir was hidden and
+  in `.git/info/exclude`; Codex's picker appears to respect ignore/hidden rules.
+- `@/tmp/...` produced "no matches"; the picker appears repo-rooted.
+- Visible repo dirs are not acceptable because they pollute the project tree.
+
+Current PoC uses a headless Linux clipboard inside the VM:
+- Server `POST /api/agents/:n/upload` (`main.ts`): raw image bytes in the body →
+  `Agents.uploadImage` → `Machines.setClipboardImage`.
+- `Machines.setClipboardImage`: starts `Xvfb :77` if needed, writes the image to
+  `/tmp/keenterm-paste/<uuid>.<ext>`, then runs `xclip -selection clipboard -t
+  image/png -i <path>` inside that display.
+- `Codex.ts`: starts Codex with `DISPLAY=:77` when Xvfb is available.
+- Client (`web/src/CodexTerminal.tsx`): a DOM `paste` listener on the xterm
+  container uploads the image, then sends Ctrl+V (`\x16`) to the TUI.
+- `web/src/api.ts`: `api.uploadImage(n, blob)`.
+
+PoC prerequisite inside the VM: `xvfb` and `xclip`.
+
+Original research below.
 
 Key finding: **Codex does NOT detect images from prompt text.** Bracketed-pasting
 a path like `/tmp/foo.png` is treated as plain text. Attachment is a structured
@@ -127,23 +149,20 @@ UI action (`UserInput::LocalImage` + `[Image #N]` placeholder), triggered only b
 
 Supported formats (sniffed by bytes, not extension): PNG, JPEG, GIF, WebP.
 
-Only viable PTY path today is option 1:
+Rejected PTY picker path:
 
 ```text
-browser paste blob ─▶ POST /api/agents/:n/upload ─▶ file in REPO_DIR/.keenterm-paste/x.png (in VM)
-                                                 ─▶ pty: "@.keenterm-paste/x.png" + Tab/Enter
+browser paste blob ─▶ POST /api/agents/:n/upload ─▶ file in /tmp/keenterm-paste/x.png (in VM)
+                                                 ─▶ pty: "@/tmp/keenterm-paste/x.png" + Tab/Enter
                                                                   └─▶ Codex popup attaches [Image #N]
 ```
 
-Risks to resolve next session:
-- Timing/race: must wait for the `@` popup to populate before sending Tab/Enter,
-  with no TUI feedback over the PTY. Likely needs a small delay or retry.
-- Confirm the `@` popup accepts repo-relative (and/or absolute) paths.
+Risks:
+- Need to bake/install `xvfb` and `xclip` into the base VM.
+- Verify Codex's Linux clipboard reader accepts the Xvfb clipboard when run with
+  `DISPLAY=:77`.
 - Cleanup of uploaded temp files in the VM.
-- Ignore the upload dir from git WITHOUT touching the project's committed
-  `.gitignore`: add `.keenterm-paste/` to `.git/info/exclude` in the VM checkout
-  (local, uncommitted). Do it once in the base VM so clones inherit it; otherwise
-  the uploaded images pollute `git status` / agent diffs.
+- Do not write uploads into the repo tree.
 - Server upload endpoint: multipart/raw body, MIME allow-list (image/*), size cap;
   push into VM via `orb -m <machine>` (see `Machines.runInRepo` pattern).
 

@@ -13,7 +13,7 @@ export type MachineInfo = typeof MachineInfo.Type
 export class Machines extends Effect.Service<Machines>()("Machines", {
   dependencies: [Sh.Default],
   effect: Effect.gen(function* () {
-    const { run } = yield* Sh
+    const { run, runWithInput } = yield* Sh
 
     return {
       list: run("orbctl", "list", "-f", "json").pipe(
@@ -27,6 +27,28 @@ export class Machines extends Effect.Service<Machines>()("Machines", {
       /** Run a command inside the VM's repo checkout with asdf on PATH. */
       runInRepo: (machine: string, script: string) =>
         run("orb", "-m", machine, "bash", "-lc", `. ~/.asdf/asdf.sh && cd ${REPO_DIR} && ${script}`),
+      /** Write an image into the VM and publish it to the VM's headless X clipboard. */
+      setClipboardImage: (machine: string, path: string, contentType: string, base64: string) =>
+        runWithInput(
+          base64,
+          "orb",
+          "-m",
+          machine,
+          "bash",
+          "-lc",
+          [
+            "set -e",
+            "command -v Xvfb >/dev/null",
+            "command -v xclip >/dev/null",
+            "export DISPLAY=:77",
+            "pgrep -f 'Xvfb :77' >/dev/null || (Xvfb :77 -screen 0 1024x768x24 >/tmp/keenterm-xvfb.log 2>&1 &)",
+            "sleep 0.2",
+            "mkdir -p /tmp/keenterm-paste",
+            `base64 -d > '${path}'`,
+            "pkill -x xclip >/dev/null 2>&1 || true",
+            `xclip -selection clipboard -t '${contentType}' -i '${path}' >/tmp/keenterm-xclip.log 2>&1 &`,
+          ].join(" && "),
+        ),
     }
   }),
 }) {}

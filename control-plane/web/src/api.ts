@@ -36,4 +36,10 @@ export const api = {
   stackUp: (n: number) => request<unknown>(`/api/agents/${n}/stack/up`, { method: 'POST' }),
   diff: (n: number) => request<{ diff: string }>(`/api/agents/${n}/diff`),
   diffStatus: (n: number) => request<DiffStatus>(`/api/agents/${n}/diff/status`),
+  uploadImage: (n: number, file: Blob) =>
+    request<{ path: string }>(`/api/agents/${n}/upload`, {
+      method: 'POST',
+      headers: { 'content-type': file.type || 'image/png' },
+      body: file,
+    }),
 }

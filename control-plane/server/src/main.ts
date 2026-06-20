@@ -29,6 +29,7 @@ const errorResponses = {
 } as const
 
 const ok = <A>(body: A) => HttpServerResponse.json(body).pipe(Effect.orDie)
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 // ---- routes -------------------------------------------------------------------
 
@@ -91,6 +92,25 @@ const router = HttpRouter.empty.pipe(
     Effect.gen(function* () {
       const agents = yield* Agents
       return yield* ok({ diff: yield* agents.diff(yield* agentNumber) })
+    }),
+  ),
+  // Paste an image: raw image bytes in the body -> written into the VM repo.
+  HttpRouter.post(
+    "/api/agents/:n/upload",
+    Effect.gen(function* () {
+      const agents = yield* Agents
+      const n = yield* agentNumber
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const bytes = yield* request.arrayBuffer.pipe(Effect.orDie)
+      const contentType = request.headers["content-type"] ?? ""
+      if (!contentType.startsWith("image/")) {
+        return yield* HttpServerResponse.json({ error: "expected image upload" }, { status: 415 }).pipe(Effect.orDie)
+      }
+      if (bytes.byteLength > MAX_UPLOAD_BYTES) {
+        return yield* HttpServerResponse.json({ error: "image upload too large" }, { status: 413 }).pipe(Effect.orDie)
+      }
+      const path = yield* agents.uploadImage(n, contentType, new Uint8Array(bytes))
+      return yield* ok({ path })
     }),
   ),
   // Interactive Codex terminal: websocket upgrade, raw stdio passthrough.

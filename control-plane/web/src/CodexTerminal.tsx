@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { api } from './api'
 import '@xterm/xterm/css/xterm.css'
 
 // One live terminal for the selected agent. Scrollback survives remounts
@@ -54,6 +55,23 @@ export function CodexTerminal({ machine }: { machine: string }) {
       sendInput(data)
     })
 
+    // Image paste PoC: upload the blob into the VM clipboard bridge, then send
+    // Ctrl+V so Codex reads the image from the VM's clipboard.
+    const agentN = Number(/(\d+)$/.exec(machine)?.[1])
+    const onPaste = (ev: ClipboardEvent) => {
+      const file = [...(ev.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'))
+      if (!file || !Number.isFinite(agentN)) return
+      ev.preventDefault()
+      ev.stopPropagation()
+      api
+        .uploadImage(agentN, file)
+        .then(() => {
+          sendInput('\x16')
+        })
+        .catch(() => {})
+    }
+    el.addEventListener('paste', onPaste, true)
+
     // fit() resizes xterm's DOM, which re-fires the ResizeObserver; without a
     // guard this loops forever on container heights where rows flip N <-> N+1
     // (page visibly "jumps"). Only refit when the proposed grid actually differs.
@@ -73,6 +91,7 @@ export function CodexTerminal({ machine }: { machine: string }) {
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      el.removeEventListener('paste', onPaste, true)
       input.dispose()
       ws.close()
       term.dispose()

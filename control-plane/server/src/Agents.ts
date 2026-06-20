@@ -1,5 +1,5 @@
 import { Data, Effect } from "effect"
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import * as Codex from "./Codex.js"
 import { BASE_MACHINE, MACHINE_RE, machineFor } from "./config.js"
 import { Machines } from "./Machines.js"
@@ -21,6 +21,15 @@ export interface AgentInfo {
 const NO_STACK: StackStatus = { pg: false, redis: false, hasura: false }
 
 const versionFor = (value: string) => createHash("sha256").update(value).digest("hex")
+
+// Codex sniffs format by bytes, but we name the temp file with a sane extension.
+const IMAGE_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+}
+const extFor = (contentType: string) => IMAGE_EXT[contentType.split(";")[0].trim()] ?? "png"
 
 const diffCommand = `
 {
@@ -149,6 +158,19 @@ export class Agents extends Effect.Service<Agents>()("Agents", {
         requireAgent(n).pipe(
           Effect.zipRight(machines.runInRepo(machineFor(n), diffStatusCommand)),
           Effect.map((status) => ({ version: versionFor(status) })),
+        ),
+
+      /** Upload an image outside the VM repo and publish it to Codex's VM clipboard. */
+      uploadImage: (n: number, contentType: string, bytes: Uint8Array) =>
+        requireAgent(n).pipe(
+          Effect.zipRight(
+            Effect.suspend(() => {
+              const imageType = contentType.split(";")[0].trim() || "image/png"
+              const path = `/tmp/keenterm-paste/${randomUUID()}.${extFor(contentType)}`
+              const base64 = Buffer.from(bytes).toString("base64")
+              return machines.setClipboardImage(machineFor(n), path, imageType, base64).pipe(Effect.as(path))
+            }),
+          ),
         ),
     }
   }),
