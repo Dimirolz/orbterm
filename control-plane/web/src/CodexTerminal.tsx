@@ -4,10 +4,20 @@ import { FitAddon } from '@xterm/addon-fit'
 import { api } from './api'
 import '@xterm/xterm/css/xterm.css'
 
-// One live terminal for the selected agent. Scrollback survives remounts
-// because the server buffers and replays each session's output.
-export function CodexTerminal({ machine }: { machine: string }) {
+export function CodexTerminal({ machine, active }: { machine: string; active: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
+  const termRef = useRef<Terminal | null>(null)
+  const fitRef = useRef<FitAddon | null>(null)
+  const sendResizeRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    if (!active) return
+    requestAnimationFrame(() => {
+      fitRef.current?.fit()
+      sendResizeRef.current?.()
+      termRef.current?.focus()
+    })
+  }, [active])
 
   useEffect(() => {
     const el = ref.current!
@@ -18,9 +28,12 @@ export function CodexTerminal({ machine }: { machine: string }) {
       theme: { background: '#1e1e1e' },
     })
     const fit = new FitAddon()
+    termRef.current = term
+    fitRef.current = fit
     term.loadAddon(fit)
     term.open(el)
     fit.fit()
+    if (active) requestAnimationFrame(() => term.focus())
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const ws = new WebSocket(`${proto}://${location.host}/term?machine=${machine}`)
@@ -31,6 +44,7 @@ export function CodexTerminal({ machine }: { machine: string }) {
         ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
       }
     }
+    sendResizeRef.current = sendResize
     ws.onopen = sendResize
     ws.onmessage = (ev) => {
       if (typeof ev.data === 'string') return // status frames; list polling covers it
@@ -57,7 +71,7 @@ export function CodexTerminal({ machine }: { machine: string }) {
 
     // Image paste PoC: upload the blob into the VM clipboard bridge, then send
     // Ctrl+V so Codex reads the image from the VM's clipboard.
-    const agentN = Number(/(\d+)$/.exec(machine)?.[1])
+    const agentN = Number(/^shilo-agent-(\d+)(?:-|$)/.exec(machine)?.[1])
     const onPaste = (ev: ClipboardEvent) => {
       const file = [...(ev.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'))
       if (!file || !Number.isFinite(agentN)) return
@@ -95,8 +109,11 @@ export function CodexTerminal({ machine }: { machine: string }) {
       input.dispose()
       ws.close()
       term.dispose()
+      termRef.current = null
+      fitRef.current = null
+      sendResizeRef.current = null
     }
   }, [machine])
 
-  return <div ref={ref} className="termwrap" />
+  return <div ref={ref} className={`termwrap${active ? ' active' : ''}`} />
 }
