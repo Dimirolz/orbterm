@@ -128,22 +128,22 @@ export class Agents extends Effect.Service<Agents>()("Agents", {
       /** Start the whole agent: VM + VM-local compose deps. */
       start: (n: number) =>
         requireAgent(n).pipe(
-          Effect.zipRight(machines.start(machineFor(n))),
+          Effect.flatMap((agent) => machines.start(agent.name)),
           Effect.zipRight(stack.up(n)),
         ),
 
       /** Stop the whole agent: codex + VM. Containers/data live inside the VM. */
       stop: (n: number) =>
         requireAgent(n).pipe(
-          Effect.tap(() => Effect.sync(() => Codex.killSession(machineFor(n)))),
-          Effect.zipRight(machines.stop(machineFor(n))),
+          Effect.tap((agent) => Effect.sync(() => Codex.killSession(agent.name))),
+          Effect.flatMap((agent) => machines.stop(agent.name)),
         ),
 
       remove: (n: number) =>
         requireAgent(n).pipe(
-          Effect.tap(() => Effect.sync(() => Codex.killSession(machineFor(n)))),
-          Effect.zipRight(machines.stop(machineFor(n)).pipe(Effect.ignore)),
-          Effect.zipRight(machines.delete(machineFor(n))),
+          Effect.tap((agent) => Effect.sync(() => Codex.killSession(agent.name))),
+          Effect.flatMap((agent) => machines.stop(agent.name).pipe(Effect.ignore, Effect.as(agent))),
+          Effect.flatMap((agent) => machines.delete(agent.name)),
         ),
 
       /** Repair: rerun compose inside the VM. */
@@ -151,12 +151,12 @@ export class Agents extends Effect.Service<Agents>()("Agents", {
 
       diff: (n: number) =>
         requireAgent(n).pipe(
-          Effect.zipRight(machines.runInRepo(machineFor(n), diffCommand)),
+          Effect.flatMap((agent) => machines.runInRepo(agent.name, diffCommand)),
         ),
 
       diffStatus: (n: number) =>
         requireAgent(n).pipe(
-          Effect.zipRight(machines.runInRepo(machineFor(n), diffStatusCommand)),
+          Effect.flatMap((agent) => machines.runInRepo(agent.name, diffStatusCommand)),
           Effect.map((status) => ({ version: versionFor(status) })),
         ),
 
@@ -168,7 +168,10 @@ export class Agents extends Effect.Service<Agents>()("Agents", {
               const imageType = contentType.split(";")[0].trim() || "image/png"
               const path = `/tmp/keenterm-paste/${randomUUID()}.${extFor(contentType)}`
               const base64 = Buffer.from(bytes).toString("base64")
-              return machines.setClipboardImage(machineFor(n), path, imageType, base64).pipe(Effect.as(path))
+              return requireAgent(n).pipe(
+                Effect.flatMap((agent) => machines.setClipboardImage(agent.name, path, imageType, base64)),
+                Effect.as(path),
+              )
             }),
           ),
         ),
