@@ -67,7 +67,7 @@ pnpm --dir control-plane dev:web
 Dev ports:
 
 - server: `7070`
-- web: Vite default or next free port
+- web: `5173`
 
 ## Known Gotchas
 
@@ -182,3 +182,63 @@ Client hooks: DOM `paste`/`drop` listeners on the xterm container (read
 3. Add base VM refresh/update flow.
 4. Add quick links: backend app, Hasura, VS Code.
 5. Add memory visibility and cleanup controls.
+
+## Handoff: Agent3 Image Paste Failure
+
+Date: 2026-06-21.
+
+User saw on agent3:
+
+```text
+Failed to paste image: clipboard unavailable: Unknown error while interacting with the clipboard: X11 server connection timed out because it was unreachable
+```
+
+Findings:
+
+- `shilo-agent-3` is running.
+- `xvfb` and `xclip` are installed in agent3.
+- `Xvfb :77` was not initially running.
+- Old code used `pgrep -f 'Xvfb :77'`; this can match the shell command itself,
+  so Xvfb is skipped.
+- Patched locally, not committed yet:
+  - `server/src/Codex.ts`: start Xvfb by checking `/tmp/.X11-unix/X77`.
+  - `server/src/Machines.ts`: same socket check, plus `test -s <path>`, plus
+    `(pkill -x xclip ... || true)`.
+- Manual start fixed X11 on agent3:
+
+```sh
+orb -m shilo-agent-3 bash -lc 'export DISPLAY=:77; test -S /tmp/.X11-unix/X77 || (rm -f /tmp/.X77-lock; Xvfb :77 -screen 0 1024x768x24 >/tmp/keenterm-xvfb.log 2>&1 &)'
+```
+
+Second issue:
+
+- `/tmp/keenterm-paste/*.png` on agent3 are 0 bytes.
+- `curl --data-binary @/tmp/keenterm-test.png ... /api/agents/3/upload` returned
+  `200`, but the new VM file was still 0 bytes.
+- Direct `Machines.setClipboardImage(...)` via `tsx` also returned `ok`, but
+  wrote 0 bytes.
+- Likely problem: `Sh.runWithInput` / `Command.feed` is not getting stdin through
+  to `orb -m ... bash -lc 'base64 -d > file'`.
+
+Next exact steps:
+
+1. Reproduce `Command.feed` locally with `Effect.scoped`.
+2. If local feed works, replace image transfer with a no-stdin path, e.g.
+   `python3 -c 'import base64,sys; open(path,"wb").write(base64.b64decode(sys.argv[1]))' "$base64"`.
+3. Restart server on `:7070`.
+4. Test:
+
+```sh
+curl -sS -i -X POST --data-binary @/tmp/keenterm-test.png \
+  -H 'content-type: image/png' \
+  http://localhost:7070/api/agents/3/upload
+
+orb -m shilo-agent-3 bash -lc \
+  'find /tmp/keenterm-paste -maxdepth 1 -type f -printf "%T@ %s %p\n" | sort -n | tail -5; DISPLAY=:77 xclip -selection clipboard -t TARGETS -o'
+```
+
+Success criteria:
+
+- newest file in `/tmp/keenterm-paste` is non-empty;
+- `xclip TARGETS` includes `image/png`;
+- web paste sends Ctrl+V and Codex attaches `[Image #N]`.
