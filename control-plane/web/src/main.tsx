@@ -5,6 +5,12 @@ import App from './App.tsx'
 
 const queryClient = new QueryClient()
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
 // no StrictMode: it double-mounts CodexTerminal in dev, opening two
 // websockets per selection and replaying the buffer twice
 createRoot(document.getElementById('root')!).render(
