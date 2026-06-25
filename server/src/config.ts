@@ -2,7 +2,8 @@ export const PORT = Number(process.env.PORT ?? 7070)
 export const PREFIX = "shilo-agent-"
 export const BASE_MACHINE = "shilo-agent-base"
 export const REPO_DIR = process.env.REPO_DIR ?? "~/projects/shilo-ai-mono"
-export const VSCODE_REPO_DIR = REPO_DIR.replace(/^~(?=\/)/, `/home/${process.env.USER ?? "ubuntu"}`)
+export const VSCODE_REMOTE_USER = process.env.VSCODE_REMOTE_USER ?? "dmitrijilin"
+export const VSCODE_REPO_DIR = REPO_DIR.replace(/^~(?=\/)/, `/home/${VSCODE_REMOTE_USER}`)
 
 export const machineFor = (n: number) => `${PREFIX}${n}`
 export const MACHINE_RE = new RegExp(`^${PREFIX}(\\d+)(?:-[a-z0-9][a-z0-9-]*)?$`)
