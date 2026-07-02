@@ -90,6 +90,14 @@ const waitHasuraConsistent = [
   stopBackendSchemaMock,
 ].join(" && ")
 
+const configureBrowserHasuraEnv = (machine: string) => [
+  `hasura_url="http://${machine}.orb.local:8080"`,
+  `for file in apps/web/.env.development.local apps/fub-app/.env; do
+    test -f "$file" || continue
+    perl -0pi -e 's#^REACT_APP_HASURA_URL=.*$#REACT_APP_HASURA_URL="'$hasura_url'"#mg' "$file"
+  done`,
+].join(" && ")
+
 export class VmStack extends Effect.Service<VmStack>()("VmStack", {
   dependencies: [Machines.Default],
   effect: Effect.gen(function* () {
@@ -104,8 +112,10 @@ export class VmStack extends Effect.Service<VmStack>()("VmStack", {
       machines.runInRepo(
         machineFor(n),
         (() => {
+          const machine = machineFor(n)
           const hasuraAppServices = HASURA_SERVICES.filter((s) => s !== "postgres")
           return [
+            configureBrowserHasuraEnv(machine),
             `${startBackendSchemaMock} || true`,
             "cd hasura",
             "docker compose up -d postgres",
