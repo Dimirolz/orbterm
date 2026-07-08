@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const host = process.env.KEENTERM_HOST ?? "http://host.orb.internal:7070"
+const host = process.env.ORBTERM_HOST ?? "http://host.orb.internal:7070"
 let buffer = Buffer.alloc(0)
 
 function send(message) {
@@ -35,7 +35,7 @@ async function handle(message) {
     return respond(message.id, {
       protocolVersion: message.params?.protocolVersion ?? "2024-11-05",
       capabilities: { tools: {} },
-      serverInfo: { name: "keenterm", version: "0.0.0" },
+      serverInfo: { name: "orbterm", version: "0.0.0" },
     })
   }
 
@@ -44,7 +44,7 @@ async function handle(message) {
       tools: [
         {
           name: "spawn_sidequest",
-          description: "Create a new keenterm agent VM and send Codex an initial prompt.",
+          description: "Create a new orbterm agent VM and send Codex an initial prompt.",
           inputSchema: {
             type: "object",
             properties: {

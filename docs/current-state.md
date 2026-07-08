@@ -72,8 +72,8 @@ Dev ports:
 Sidequest helpers:
 
 ```sh
-KEENTERM_HOST=http://host.orb.internal:7070 scripts/keenterm-sidequest "prompt"
-node scripts/keenterm-mcp.mjs
+ORBTERM_HOST=http://host.orb.internal:7070 scripts/orbterm-sidequest "prompt"
+node scripts/orbterm-mcp.mjs
 ```
 
 ## Known Gotchas
@@ -127,7 +127,7 @@ sudo apt-get install -y xvfb xclip
 
 The `@` picker path was rejected:
 - `@<uuid>.png` produced "no matches" because the file was in a subdir.
-- `@.keenterm-paste/<uuid>.png` hung on "loading" because the dir was hidden and
+- `@.orbterm-paste/<uuid>.png` hung on "loading" because the dir was hidden and
   in `.git/info/exclude`; Codex's picker appears to respect ignore/hidden rules.
 - `@/tmp/...` produced "no matches"; the picker appears repo-rooted.
 - Visible repo dirs are not acceptable because they pollute the project tree.
@@ -136,7 +136,7 @@ Current PoC uses a headless Linux clipboard inside the VM:
 - Server `POST /api/agents/:n/upload` (`main.ts`): raw image bytes in the body →
   `Agents.uploadImage` → `Machines.setClipboardImage`.
 - `Machines.setClipboardImage`: starts `Xvfb :77` if needed, writes the image to
-  `/tmp/keenterm-paste/<uuid>.<ext>`, then runs `xclip -selection clipboard -t
+  `/tmp/orbterm-paste/<uuid>.<ext>`, then runs `xclip -selection clipboard -t
   image/png -i <path>` inside that display.
 - `Codex.ts`: starts Codex with `DISPLAY=:77` when Xvfb is available.
 - Client (`web/src/CodexTerminal.tsx`): a DOM `paste` listener on the xterm
@@ -165,8 +165,8 @@ Supported formats (sniffed by bytes, not extension): PNG, JPEG, GIF, WebP.
 Rejected PTY picker path:
 
 ```text
-browser paste blob ─▶ POST /api/agents/:n/upload ─▶ file in /tmp/keenterm-paste/x.png (in VM)
-                                                 ─▶ pty: "@/tmp/keenterm-paste/x.png" + Tab/Enter
+browser paste blob ─▶ POST /api/agents/:n/upload ─▶ file in /tmp/orbterm-paste/x.png (in VM)
+                                                 ─▶ pty: "@/tmp/orbterm-paste/x.png" + Tab/Enter
                                                                   └─▶ Codex popup attaches [Image #N]
 ```
 
@@ -214,13 +214,13 @@ Findings:
 - Manual start fixed X11 on agent3:
 
 ```sh
-orb -m shilo-agent-3 bash -lc 'export DISPLAY=:77; test -S /tmp/.X11-unix/X77 || (rm -f /tmp/.X77-lock; Xvfb :77 -screen 0 1024x768x24 >/tmp/keenterm-xvfb.log 2>&1 &)'
+orb -m shilo-agent-3 bash -lc 'export DISPLAY=:77; test -S /tmp/.X11-unix/X77 || (rm -f /tmp/.X77-lock; Xvfb :77 -screen 0 1024x768x24 >/tmp/orbterm-xvfb.log 2>&1 &)'
 ```
 
 Second issue:
 
-- `/tmp/keenterm-paste/*.png` on agent3 are 0 bytes.
-- `curl --data-binary @/tmp/keenterm-test.png ... /api/agents/3/upload` returned
+- `/tmp/orbterm-paste/*.png` on agent3 are 0 bytes.
+- `curl --data-binary @/tmp/orbterm-test.png ... /api/agents/3/upload` returned
   `200`, but the new VM file was still 0 bytes.
 - Direct `Machines.setClipboardImage(...)` via `tsx` also returned `ok`, but
   wrote 0 bytes.
@@ -236,16 +236,16 @@ Next exact steps:
 4. Test:
 
 ```sh
-curl -sS -i -X POST --data-binary @/tmp/keenterm-test.png \
+curl -sS -i -X POST --data-binary @/tmp/orbterm-test.png \
   -H 'content-type: image/png' \
   http://localhost:7070/api/agents/3/upload
 
 orb -m shilo-agent-3 bash -lc \
-  'find /tmp/keenterm-paste -maxdepth 1 -type f -printf "%T@ %s %p\n" | sort -n | tail -5; DISPLAY=:77 xclip -selection clipboard -t TARGETS -o'
+  'find /tmp/orbterm-paste -maxdepth 1 -type f -printf "%T@ %s %p\n" | sort -n | tail -5; DISPLAY=:77 xclip -selection clipboard -t TARGETS -o'
 ```
 
 Success criteria:
 
-- newest file in `/tmp/keenterm-paste` is non-empty;
+- newest file in `/tmp/orbterm-paste` is non-empty;
 - `xclip TARGETS` includes `image/png`;
 - web paste sends Ctrl+V and Codex attaches `[Image #N]`.

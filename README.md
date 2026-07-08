@@ -1,10 +1,10 @@
-# keenterm
+# orbterm
 
 A terminal where every tab is its own Linux.
 
-keenterm is a local control plane for running multiple coding agents in parallel, each inside its own full Linux VM on macOS (via [OrbStack](https://orbstack.dev/)). Every agent gets its own filesystem, its own Postgres, Redis, Hasura, Temporal — its own copy of the repo. Agents can't step on each other because they live in different machines.
+orbterm is a local control plane for running multiple coding agents in parallel, each inside its own full Linux VM on macOS (via [OrbStack](https://orbstack.dev/)). Every agent gets its own filesystem, its own Postgres, Redis, Hasura, Temporal — its own copy of the repo. Agents can't step on each other because they live in different machines.
 
-![keenterm UI](docs/assets/keenterm-ui.png)
+![orbterm UI](docs/assets/orbterm-ui.png)
 
 ## Why VMs instead of worktrees or Docker
 
@@ -23,7 +23,7 @@ Opening a new tab takes about three seconds. That's the cost of booting a world.
 - Stack repair: bring up the docker compose services inside a VM with one call
 - Sidequests: agents can spawn their own agents
 
-Read more in the blog post: [A terminal where every tab is its own Linux](https://dimailin.com/keenterm/).
+Read more in the blog post: [A terminal where every tab is its own Linux](https://dimailin.com/orbterm/).
 
 ## Architecture
 
@@ -46,7 +46,7 @@ State is derived live from `orbctl`, docker-in-VM, and PTY sessions. There is no
 ```text
 server/          Effect TS backend
 web/             React operator UI
-scripts/         keenterm CLI/MCP helpers
+scripts/         orbterm CLI/MCP helpers
 docs/            current state, decisions, product direction, research notes
 experiments/     isolated spikes and prototypes
 ```

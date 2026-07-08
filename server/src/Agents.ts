@@ -175,7 +175,7 @@ export class Agents extends Effect.Service<Agents>()("Agents", {
           Effect.zipRight(
             Effect.suspend(() => {
               const imageType = contentType.split(";")[0].trim() || "image/png"
-              const path = `/tmp/keenterm-paste/${randomUUID()}.${extFor(contentType)}`
+              const path = `/tmp/orbterm-paste/${randomUUID()}.${extFor(contentType)}`
               const base64 = Buffer.from(bytes).toString("base64")
               return requireAgent(n).pipe(
                 Effect.flatMap((agent) => machines.setClipboardImage(agent.name, path, imageType, base64)),

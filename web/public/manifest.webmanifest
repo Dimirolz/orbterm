@@ -1,6 +1,6 @@
 {
-  "name": "keenterm",
-  "short_name": "keenterm",
+  "name": "orbterm",
+  "short_name": "orbterm",
   "id": "/",
   "description": "Control plane for Codex agents",
   "start_url": "/",

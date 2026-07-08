@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-host="${KEENTERM_HOST:-http://host.orb.internal:7070}"
+host="${ORBTERM_HOST:-http://host.orb.internal:7070}"
 
 if [ "$#" -gt 0 ]; then
   prompt="$*"
@@ -10,8 +10,8 @@ else
 fi
 
 if [ -z "${prompt//[[:space:]]/}" ]; then
-  echo "usage: keenterm-sidequest <prompt>" >&2
-  echo "or:    printf 'prompt' | keenterm-sidequest" >&2
+  echo "usage: orbterm-sidequest <prompt>" >&2
+  echo "or:    printf 'prompt' | orbterm-sidequest" >&2
   exit 2
 fi
 

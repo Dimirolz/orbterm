@@ -1,13 +1,13 @@
 {
-  "name": "keen-fleet-control-plane",
+  "name": "orbterm-control-plane",
   "version": "0.0.0",
   "private": true,
   "scripts": {
     "dev": "pnpm dev:server & pnpm dev:web & wait",
     "dev:server": "pnpm --filter server dev",
     "dev:web": "pnpm --filter web dev",
-    "sidequest": "scripts/keenterm-sidequest",
-    "mcp": "node scripts/keenterm-mcp.mjs"
+    "sidequest": "scripts/orbterm-sidequest",
+    "mcp": "node scripts/orbterm-mcp.mjs"
   },
   "dependencies": {
     "@xterm/xterm": "^6.0.0"

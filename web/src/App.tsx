@@ -10,7 +10,7 @@ type AgentAction = 'start' | 'stop' | 'stack-up' | 'diff' | 'delete'
 type OpenDiff = { n: number; name: string; patch: string; version: string }
 type AgentLabels = Record<string, string>
 
-const LABELS_KEY = 'keenterm.agentLabels'
+const LABELS_KEY = 'orbterm.agentLabels'
 
 const vscodeSshUrl = (machine: string, repoDir: string) =>
   `vscode://vscode-remote/ssh-remote+${encodeURIComponent(`${machine}@orb`)}${repoDir}`
@@ -236,7 +236,7 @@ export default function App() {
           <header>
             <span className="brand">
               <span className="wordmark">
-                keen<span className="dot" />term
+                orb<span className="dot" />term
               </span>
             </span>
             <button

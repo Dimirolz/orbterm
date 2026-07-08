@@ -46,16 +46,16 @@ setup:
 
 Config locations should support:
 
-- project file: `./keenfleet.yml`;
-- ignored local file: `./keenfleet.local.yml`;
-- private user file: `~/.config/keen-fleet/<project>.yml`.
+- project file: `./orbterm.yml`;
+- ignored local file: `./orbterm.local.yml`;
+- private user file: `~/.config/orbterm/<project>.yml`.
 
 ## Shareable Package
 
 First target:
 
 ```sh
-npx keen-fleet
+npx orbterm
 ```
 
 That command should start the local server, serve the built web UI, and open a browser.
@@ -69,4 +69,3 @@ Electron is polish, not a prerequisite.
 - resource visibility and cleanup matter once multiple agents run;
 - result delivery still needs branch/push/PR workflow;
 - OrbStack means macOS-only until the VM layer is abstracted.
-

@@ -118,7 +118,7 @@ function getSession(machine: string): Session {
     ". ~/.asdf/asdf.sh",
     "if command -v Xvfb >/dev/null; then",
     "  export DISPLAY=:77",
-    "  test -S /tmp/.X11-unix/X77 || (rm -f /tmp/.X77-lock; Xvfb :77 -screen 0 1024x768x24 >/tmp/keenterm-xvfb.log 2>&1 &)",
+    "  test -S /tmp/.X11-unix/X77 || (rm -f /tmp/.X77-lock; Xvfb :77 -screen 0 1024x768x24 >/tmp/orbterm-xvfb.log 2>&1 &)",
     "  for i in $(seq 1 20); do test -S /tmp/.X11-unix/X77 && break; sleep 0.1; done",
     "fi",
     `cd ${REPO_DIR}`,
